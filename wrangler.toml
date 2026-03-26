@@ -1,0 +1,22 @@
+name = "carteira-crm-ldm"
+type = "javascript"
+account_id = ""
+workers_dev = true
+route = ""
+zone_id = ""
+compatibility_date = "2024-01-01"
+
+[env.production]
+name = "carteira-crm-ldm-prod"
+routes = [
+  { pattern = "carteira-crm-ldm.pages.dev", zone_name = "example.com" }
+]
+
+[build]
+command = "npm run build"
+cwd = "./"
+watch_paths = ["src/**/*.ts"]
+
+[build.upload]
+format = "modules"
+main = "./.next/server/index.js"
