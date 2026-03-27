@@ -33,6 +33,7 @@ interface ClienteAdmin {
   vendedor_nome?: string
 }
 
+/*
 interface MetaAdmin {
   id: string
   user_id: string
@@ -40,6 +41,7 @@ interface MetaAdmin {
   meta_venda: number
   meta_garantia: number
 }
+*/
 
 // Lista de vendedores permitidos
 const VENDEDORES_PERMITIDOS = [
@@ -106,12 +108,14 @@ export default function AdminPage() {
 
       if (clientesError) throw clientesError
 
+      /*
       // Carregar todas as metas
       const { data: todasMetas, error: metasError } = await supabase
         .from('metas')
         .select('*')
 
       if (metasError) throw metasError
+      */
 
       // Criar mapa de vendedores para referência rápida
       const vendedoresMap = new Map((usuarios || []).map(u => [u.id, u]))
