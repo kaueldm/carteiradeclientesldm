@@ -9,13 +9,11 @@ import { Bell, Trash2, CheckCircle2 } from 'lucide-react'
 export default function NotificacoesPage() {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState('')
 
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-      setUserId(session.user.id)
       
       // Carregar notificações
       const { data } = await supabase
