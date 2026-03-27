@@ -88,33 +88,33 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-5">
+    <div className="min-h-screen flex flex-col p-4 lg:p-6 bg-gradient-to-br from-ldm-black via-slate-900 to-ldm-blue-dark">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex items-center justify-between mb-6"
       >
         <div>
-          <h1 className="text-2xl font-bold text-white">Pipeline</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            {clientes.length} clientes no funil de vendas
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-ldm-orange to-ldm-orange-light bg-clip-text text-transparent">Pipeline de Vendas</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            {clientes.length} clientes no funil
           </p>
         </div>
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => { setNovoStatus('Novo'); setModalOpen(true) }}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-lg shadow-blue-500/20"
+          className="flex items-center gap-2 bg-gradient-to-r from-ldm-orange to-ldm-orange-dark hover:shadow-lg hover:shadow-ldm-orange/50 text-white px-6 py-3 rounded-xl font-semibold transition-all"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           Novo Cliente
         </motion.button>
       </motion.div>
 
-      {/* Kanban */}
+      {/* Kanban Container com scroll interno */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex-1 flex gap-4 overflow-x-auto overflow-y-hidden pb-4 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4">
           {COLUNAS.map((status) => {
             const clientesColuna = getClientesByStatus(status)
             const valorColuna = getValorByStatus(status)
@@ -124,40 +124,42 @@ export default function PipelinePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: COLUNAS.indexOf(status) * 0.05 }}
-                className={`flex-shrink-0 w-72 bg-slate-800/50 border-t-2 ${STATUS_PIPELINE_COLORS[status]} rounded-2xl flex flex-col`}
+                className={`flex-shrink-0 w-80 bg-white/5 backdrop-blur-xl border-t-4 ${STATUS_PIPELINE_COLORS[status]} rounded-2xl flex flex-col shadow-lg hover:shadow-xl transition-all`}
               >
                 {/* Header coluna */}
-                <div className="p-3 border-b border-slate-700/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-semibold ${COLUNA_COLORS[status]}`}>{status}</span>
-                      <span className="bg-slate-700 text-slate-400 text-xs px-2 py-0.5 rounded-full">
+                <div className="p-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-base font-bold ${COLUNA_COLORS[status]}`}>{status}</span>
+                      <span className="bg-ldm-orange/20 text-ldm-orange text-xs font-semibold px-3 py-1 rounded-full border border-ldm-orange/30">
                         {clientesColuna.length}
                       </span>
                     </div>
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => { setNovoStatus(status); setModalOpen(true) }}
-                      className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-all"
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-ldm-orange hover:bg-ldm-orange/20 transition-all"
                     >
                       <Plus className="w-4 h-4" />
-                    </button>
+                    </motion.button>
                   </div>
                   {valorColuna > 0 && (
-                    <p className="text-slate-500 text-xs mt-1 flex items-center gap-1">
-                      <DollarSign className="w-3 h-3" />
-                      R$ {valorColuna.toLocaleString('pt-BR')}
+                    <p className="text-gray-400 text-xs flex items-center gap-1 font-semibold">
+                      <DollarSign className="w-3 h-3 text-green-400" />
+                      <span className="text-green-400">R$ {(valorColuna / 1000).toFixed(1)}k</span>
                     </p>
                   )}
                 </div>
 
-                {/* Cards */}
+                {/* Cards com scroll interno */}
                 <Droppable droppableId={status}>
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex-1 p-2 space-y-2 min-h-[200px] transition-colors ${
-                        snapshot.isDraggingOver ? 'bg-slate-700/20' : ''
+                      className={`flex-1 p-3 space-y-2 overflow-y-auto max-h-[calc(100vh-300px)] transition-all ${
+                        snapshot.isDraggingOver ? 'bg-ldm-orange/10 border border-ldm-orange/30' : ''
                       }`}
                     >
                       {clientesColuna.map((cliente, index) => (
@@ -169,36 +171,37 @@ export default function PipelinePage() {
                               {...prov.dragHandleProps}
                             >
                               <motion.div
-                                whileHover={{ scale: 1.02 }}
-                                className={`bg-slate-800 border rounded-xl p-3 cursor-grab active:cursor-grabbing transition-all ${
+                                whileHover={{ scale: 1.03, y: -2 }}
+                                whileTap={{ scale: 0.98 }}
+                                className={`bg-white/5 backdrop-blur-sm border rounded-lg p-3 cursor-grab active:cursor-grabbing transition-all ${
                                   snap.isDragging
-                                    ? 'border-blue-500/50 shadow-lg shadow-blue-500/10 rotate-1'
-                                    : 'border-slate-700/50 hover:border-slate-600'
+                                    ? 'border-ldm-orange/50 shadow-lg shadow-ldm-orange/20 scale-105'
+                                    : 'border-white/10 hover:border-ldm-orange/30 hover:bg-white/10'
                                 }`}
                               >
                                 <div className="flex items-start gap-2">
-                                  <div className="w-7 h-7 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 font-bold text-xs flex-shrink-0">
+                                  <div className="w-8 h-8 bg-gradient-to-br from-ldm-orange to-ldm-orange-dark rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg shadow-ldm-orange/30">
                                     {cliente.nome.charAt(0).toUpperCase()}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-white text-sm font-medium truncate">{cliente.nome}</p>
+                                    <p className="text-white text-sm font-semibold truncate">{cliente.nome}</p>
                                     {cliente.empresa && (
-                                      <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5 truncate">
+                                      <p className="text-gray-400 text-xs flex items-center gap-1 mt-1 truncate">
                                         <Building2 className="w-3 h-3 flex-shrink-0" />{cliente.empresa}
                                       </p>
                                     )}
                                     {cliente.telefone && (
-                                      <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
+                                      <p className="text-gray-400 text-xs flex items-center gap-1 mt-0.5">
                                         <Phone className="w-3 h-3 flex-shrink-0" />{cliente.telefone}
                                       </p>
                                     )}
                                   </div>
                                 </div>
                                 {cliente.valor_potencial && (
-                                  <div className="mt-2 pt-2 border-t border-slate-700/50">
-                                    <span className="text-green-400 text-xs font-medium flex items-center gap-1">
+                                  <div className="mt-2 pt-2 border-t border-white/10">
+                                    <span className="text-green-400 text-xs font-bold flex items-center gap-1">
                                       <DollarSign className="w-3 h-3" />
-                                      R$ {cliente.valor_potencial.toLocaleString('pt-BR')}
+                                      R$ {(cliente.valor_potencial / 1000).toFixed(1)}k
                                     </span>
                                   </div>
                                 )}
@@ -209,8 +212,9 @@ export default function PipelinePage() {
                       ))}
                       {provided.placeholder}
                       {clientesColuna.length === 0 && !snapshot.isDraggingOver && (
-                        <div className="text-center py-6 text-slate-600 text-xs">
-                          Arraste clientes aqui
+                        <div className="text-center py-12 text-gray-500 text-sm font-medium">
+                          <p>Sem clientes</p>
+                          <p className="text-xs text-gray-600 mt-1">Arraste ou crie um novo</p>
                         </div>
                       )}
                     </div>
