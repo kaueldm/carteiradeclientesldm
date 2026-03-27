@@ -5,10 +5,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Compatibilidade com Vercel e Cloudflare
-  experimental: {
-    isrMemoryCacheSize: 0,
-  },
+
 }
 
 export default nextConfig

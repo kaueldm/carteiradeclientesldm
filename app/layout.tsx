@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'CRM - Loja do Mecânico',
+  title: 'CRM LDM',
   description: 'Carteira de Clientes - Loja do Mecânico',
   icons: {
     icon: '/favicon.ico',
