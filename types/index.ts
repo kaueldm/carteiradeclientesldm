@@ -3,6 +3,7 @@ export interface User {
   nome: string
   email: string
   avatar_url?: string
+  role?: 'vendedor' | 'admin'
 }
 
 export interface Cliente {
@@ -15,9 +16,16 @@ export interface Cliente {
   status: StatusCliente
   valor_potencial?: number
   observacoes?: string
+  cpf_cnpj?: string
+  numero_pedido?: string
+  numero_orcamento?: string
+  comprou_garantia?: boolean
   created_at: string
   updated_at: string
   ultima_interacao?: string
+  profiles?: {
+    nome_completo: string
+  }
 }
 
 export type StatusCliente =
@@ -69,6 +77,16 @@ export interface Interacao {
   descricao: string
   created_at: string
   clientes?: Cliente
+}
+
+export interface Meta {
+  id: string
+  user_id: string
+  mes_ano: string
+  meta_venda: number
+  meta_garantia: number
+  created_at: string
+  updated_at: string
 }
 
 export const STATUS_COLORS: Record<StatusCliente, string> = {

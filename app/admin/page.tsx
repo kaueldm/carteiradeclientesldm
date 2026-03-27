@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { motion } from 'framer-motion'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Users, TrendingUp, MessageSquare, LogOut, Bell, Filter } from 'lucide-react'
+import { Users, TrendingUp, MessageSquare, LogOut, Bell, Filter, ShieldCheck, DollarSign, ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 interface VendedorMetricas {
   id: string
@@ -15,6 +16,7 @@ interface VendedorMetricas {
   clientesFechados: number
   valorTotal: number
   taxaConversao: number
+  vendasGarantia: number
 }
 
 interface ClienteAdmin {
@@ -26,6 +28,8 @@ interface ClienteAdmin {
   status: string
   valor_potencial?: number
   user_id: string
+  comprou_garantia?: boolean
+  created_at: string
 }
 
 export default function AdminPage() {
@@ -45,7 +49,6 @@ export default function AdminPage() {
       await carregarDados()
     }
     init()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function verificarAdmin() {
@@ -77,18 +80,7 @@ export default function AdminPage() {
         .eq('role', 'vendedor')
         .order('nome_completo', { ascending: true })
 
-      if (usuariosError) {
-        console.error('Erro ao carregar usuários:', usuariosError)
-        setLoading(false)
-        return
-      }
-
-      if (!usuarios || usuarios.length === 0) {
-        setVendedores([])
-        setClientes([])
-        setLoading(false)
-        return
-      }
+      if (usuariosError) throw usuariosError
 
       // Carregar todos os clientes de todos os vendedores
       const { data: todosClientes, error: clientesError } = await supabase
@@ -96,18 +88,21 @@ export default function AdminPage() {
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (clientesError) {
-        console.error('Erro ao carregar clientes:', clientesError)
-      }
+      if (clientesError) throw clientesError
 
       setClientes(todosClientes || [])
 
       // Calcular métricas para cada vendedor
-      const metricas: VendedorMetricas[] = usuarios.map((user) => {
+      const metricas: VendedorMetricas[] = (usuarios || []).map((user) => {
         const clientesVendedor = (todosClientes || []).filter(c => c.user_id === user.id)
         const totalClientes = clientesVendedor.length
         const clientesFechados = clientesVendedor.filter(c => c.status === 'Fechado').length
-        const valorTotal = clientesVendedor.reduce((sum, c) => sum + (Number(c.valor_potencial) || 0), 0)
+        const valorTotal = clientesVendedor
+          .filter(c => c.status === 'Fechado')
+          .reduce((sum, c) => sum + (Number(c.valor_potencial) || 0), 0)
+        const vendasGarantia = clientesVendedor
+          .filter(c => c.comprou_garantia && c.status === 'Fechado')
+          .reduce((sum, c) => sum + (Number(c.valor_potencial) || 0), 0)
         const taxaConversao = totalClientes > 0 ? (clientesFechados / totalClientes) * 100 : 0
 
         return {
@@ -116,6 +111,7 @@ export default function AdminPage() {
           totalClientes,
           clientesFechados,
           valorTotal,
+          vendasGarantia,
           taxaConversao: Math.round(taxaConversao),
         }
       })
@@ -132,16 +128,17 @@ export default function AdminPage() {
     if (!notificacaoTitulo || !notificacaoMsg) return
 
     try {
-      const { data: user } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
       await supabase.from('notificacoes').insert({
         titulo: notificacaoTitulo,
         mensagem: notificacaoMsg,
-        criada_por: user.user?.id,
+        criada_por: session?.user.id,
       })
 
       setNotificacaoTitulo('')
       setNotificacaoMsg('')
       setAbrirNotif(false)
+      alert('Notificação enviada com sucesso!')
     } catch (error) {
       console.error('Erro ao enviar notificação:', error)
     }
@@ -152,320 +149,184 @@ export default function AdminPage() {
     router.push('/login')
   }
 
-  // Filtrar dados conforme seleção
   const dadosFiltrados = filtroVendedor === 'todos' ? vendedores : vendedores.filter(v => v.id === filtroVendedor)
   const clientesFiltrados = filtroVendedor === 'todos' 
     ? clientes 
     : clientes.filter(c => c.user_id === filtroVendedor)
 
+  const totalVendasGlobal = dadosFiltrados.reduce((sum, v) => sum + v.valorTotal, 0)
+  const totalGarantiasGlobal = dadosFiltrados.reduce((sum, v) => sum + v.vendasGarantia, 0)
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-ldm-black via-slate-900 to-ldm-blue-dark flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-ldm-orange/30 border-t-ldm-orange rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Carregando dados...</p>
+          <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Carregando painel administrativo...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-ldm-black via-slate-900 to-ldm-blue-dark">
+    <div className="min-h-screen bg-slate-950 text-slate-200">
       {/* Header */}
-      <div className="bg-white/5 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10">
-              <Image src="/assets/logo-menu.png" alt="LDM" fill className="object-contain" />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-ldm-orange to-ldm-orange-light bg-clip-text text-transparent">
-              Painel Admin
-            </h1>
-          </div>
+      <div className="bg-slate-900/50 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
+            <Link href="/dashboard" className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                <ShieldCheck className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-white hidden sm:block">Painel Administrativo</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
               onClick={() => setAbrirNotif(!abrirNotif)}
-              className="p-2 hover:bg-white/10 rounded-lg transition"
+              className={`p-2.5 rounded-xl transition-all ${abrirNotif ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+              title="Enviar Notificação"
             >
-              <Bell className="w-6 h-6 text-ldm-orange" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
+              <Bell className="w-5 h-5" />
+            </button>
+            <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition"
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all font-medium text-sm"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4" />
               Sair
-            </motion.button>
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Painel de Notificações */}
-        {abrirNotif && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 p-6 bg-white/5 backdrop-blur-xl border border-ldm-orange/30 rounded-xl"
-          >
-            <h2 className="text-lg font-bold text-ldm-orange mb-4">Enviar Notificação aos Vendedores</h2>
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Título da mensagem"
-                value={notificacaoTitulo}
-                onChange={(e) => setNotificacaoTitulo(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-ldm-orange focus:ring-2 focus:ring-ldm-orange/30"
-              />
-              <textarea
-                placeholder="Mensagem completa"
-                value={notificacaoMsg}
-                onChange={(e) => setNotificacaoMsg(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-ldm-orange focus:ring-2 focus:ring-ldm-orange/30"
-              />
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  onClick={enviarNotificacao}
-                  className="px-6 py-2 bg-gradient-to-r from-ldm-orange to-ldm-orange-dark text-white rounded-lg font-semibold"
-                >
-                  Enviar
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => setAbrirNotif(false)}
-                  className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg"
-                >
-                  Cancelar
-                </motion.button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {/* Notificação */}
+        <AnimatePresence>
+          {abrirNotif && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="p-6 bg-slate-900 border border-blue-500/30 rounded-2xl space-y-4">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-blue-400" />
+                  Enviar Notificação Geral
+                </h2>
+                <div className="grid grid-cols-1 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Título da notificação"
+                    value={notificacaoTitulo}
+                    onChange={(e) => setNotificacaoTitulo(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  />
+                  <textarea
+                    placeholder="Conteúdo da mensagem..."
+                    value={notificacaoMsg}
+                    onChange={(e) => setNotificacaoMsg(e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                  />
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button onClick={() => setAbrirNotif(false)} className="px-6 py-2.5 text-slate-400 hover:text-white font-medium">Cancelar</button>
+                  <button onClick={enviarNotificacao} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20">Enviar para Todos</button>
+                </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Filtros e KPIs */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-full md:w-auto">
+            <div className="p-2 text-slate-500"><Filter className="w-4 h-4" /></div>
+            <select
+              value={filtroVendedor}
+              onChange={(e) => setFiltroVendedor(e.target.value)}
+              className="bg-transparent text-white border-none focus:ring-0 text-sm font-medium pr-8 cursor-pointer w-full"
+            >
+              <option value="todos" className="bg-slate-900">Todos os Vendedores</option>
+              {vendedores.map(v => (
+                <option key={v.id} value={v.id} className="bg-slate-900">{v.nome}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-auto">
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Clientes</p>
+              <p className="text-xl font-bold text-white">{clientesFiltrados.length}</p>
             </div>
-          </motion.div>
-        )}
-
-        {/* Filtro de Vendedor */}
-        <div className="mb-8 flex items-center gap-4">
-          <Filter className="w-5 h-5 text-ldm-orange" />
-          <select
-            value={filtroVendedor}
-            onChange={(e) => setFiltroVendedor(e.target.value)}
-            className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:border-ldm-orange focus:ring-2 focus:ring-ldm-orange/30"
-          >
-            <option value="todos">Todos os Vendedores</option>
-            {vendedores.map(v => (
-              <option key={v.id} value={v.id}>{v.nome}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total de Clientes</p>
-                <p className="text-3xl font-bold text-ldm-orange">
-                  {dadosFiltrados.reduce((sum, v) => sum + v.totalClientes, 0)}
-                </p>
-              </div>
-              <Users className="w-12 h-12 text-ldm-orange/30" />
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Vendas</p>
+              <p className="text-xl font-bold text-emerald-400">R$ {totalVendasGlobal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Clientes Fechados</p>
-                <p className="text-3xl font-bold text-ldm-blue">
-                  {dadosFiltrados.reduce((sum, v) => sum + v.clientesFechados, 0)}
-                </p>
-              </div>
-              <TrendingUp className="w-12 h-12 text-ldm-blue/30" />
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Garantias</p>
+              <p className="text-xl font-bold text-orange-400">R$ {totalGarantiasGlobal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Valor Total</p>
-                <p className="text-3xl font-bold text-green-400">
-                  R$ {(dadosFiltrados.reduce((sum, v) => sum + v.valorTotal, 0) / 1000).toFixed(1)}k
-                </p>
-              </div>
-              <MessageSquare className="w-12 h-12 text-green-400/30" />
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
+              <p className="text-[10px] text-slate-500 uppercase font-bold">Conversão</p>
+              <p className="text-xl font-bold text-blue-400">
+                {Math.round(clientesFiltrados.length > 0 ? (clientesFiltrados.filter(c => c.status === 'Fechado').length / clientesFiltrados.length) * 100 : 0)}%
+              </p>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Taxa Média de Conversão</p>
-                <p className="text-3xl font-bold text-purple-400">
-                  {Math.round(dadosFiltrados.reduce((sum, v) => sum + v.taxaConversao, 0) / (dadosFiltrados.length || 1))}%
-                </p>
-              </div>
-              <TrendingUp className="w-12 h-12 text-purple-400/30" />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Gráfico de Barras */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl"
-          >
-            <h3 className="text-lg font-bold text-white mb-4">Clientes por Vendedor</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dadosFiltrados}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="nome" stroke="#999" />
-                <YAxis stroke="#999" />
-                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }} />
-                <Bar dataKey="totalClientes" fill="#FF8C00" />
-              </BarChart>
-            </ResponsiveContainer>
-          </motion.div>
-
-          {/* Gráfico de Pizza */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl"
-          >
-            <h3 className="text-lg font-bold text-white mb-4">Taxa de Conversão</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={dadosFiltrados}
-                  dataKey="taxaConversao"
-                  nameKey="nome"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label
-                >
-                  {dadosFiltrados.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={['#FF8C00', '#0066CC', '#00CC66', '#FF6B6B'][index % 4]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </motion.div>
+          </div>
         </div>
 
         {/* Tabela de Vendedores */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-x-auto mb-8"
-        >
-          <h3 className="text-lg font-bold text-white mb-4">Detalhes dos Vendedores</h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-3 px-4 text-ldm-orange">Vendedor</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Total de Clientes</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Fechados</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Valor Total</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Taxa de Conversão</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dadosFiltrados.map((vendedor) => (
-                <tr key={vendedor.id} className="border-b border-white/5 hover:bg-white/5 transition">
-                  <td className="py-3 px-4 text-white">{vendedor.nome}</td>
-                  <td className="py-3 px-4 text-gray-300">{vendedor.totalClientes}</td>
-                  <td className="py-3 px-4 text-green-400">{vendedor.clientesFechados}</td>
-                  <td className="py-3 px-4 text-blue-400">R$ {(vendedor.valorTotal / 1000).toFixed(1)}k</td>
-                  <td className="py-3 px-4 text-purple-400">{vendedor.taxaConversao}%</td>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="p-6 border-b border-slate-800">
+            <h3 className="text-lg font-bold text-white">Desempenho por Vendedor</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-800/50">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Vendedor</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Clientes</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Fechados</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Total Vendas</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Garantias</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Conversão</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </motion.div>
-
-        {/* Tabela de Clientes */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-x-auto"
-        >
-          <h3 className="text-lg font-bold text-white mb-4">
-            {filtroVendedor === 'todos' ? 'Todos os Clientes' : `Clientes de ${vendedores.find(v => v.id === filtroVendedor)?.nome}`}
-          </h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-3 px-4 text-ldm-orange">Nome</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Empresa</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Telefone</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Email</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Status</th>
-                <th className="text-left py-3 px-4 text-ldm-orange">Valor Potencial</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clientesFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-4 px-4 text-center text-gray-500">
-                    Nenhum cliente encontrado
-                  </td>
-                </tr>
-              ) : (
-                clientesFiltrados.map((cliente) => (
-                  <tr key={cliente.id} className="border-b border-white/5 hover:bg-white/5 transition">
-                    <td className="py-3 px-4 text-white">{cliente.nome}</td>
-                    <td className="py-3 px-4 text-gray-300">{cliente.empresa || '-'}</td>
-                    <td className="py-3 px-4 text-gray-300">{cliente.telefone || '-'}</td>
-                    <td className="py-3 px-4 text-gray-300">{cliente.email || '-'}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        cliente.status === 'Fechado' ? 'bg-green-500/20 text-green-400' :
-                        cliente.status === 'Perdido' ? 'bg-red-500/20 text-red-400' :
-                        cliente.status === 'Negociação' ? 'bg-orange-500/20 text-orange-400' :
-                        cliente.status === 'Proposta' ? 'bg-purple-500/20 text-purple-400' :
-                        cliente.status === 'Em Contato' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {cliente.status}
-                      </span>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {vendedores.filter(v => filtroVendedor === 'todos' || v.id === filtroVendedor).map((v) => (
+                  <tr key={v.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 font-bold text-xs">
+                          {v.nome.charAt(0)}
+                        </div>
+                        <span className="font-medium text-white">{v.nome}</span>
+                      </div>
                     </td>
-                    <td className="py-3 px-4 text-green-400">
-                      {cliente.valor_potencial ? `R$ ${(cliente.valor_potencial / 1000).toFixed(1)}k` : '-'}
+                    <td className="px-6 py-4 text-center font-medium">{v.totalClientes}</td>
+                    <td className="px-6 py-4 text-center font-medium text-emerald-400">{v.clientesFechados}</td>
+                    <td className="px-6 py-4 text-right font-bold text-white">R$ {v.valorTotal.toLocaleString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-right font-bold text-orange-400">R$ {v.vendasGarantia.toLocaleString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-12 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-blue-500 h-full" style={{ width: `${v.taxaConversao}%` }} />
+                        </div>
+                        <span className="text-xs font-bold">{v.taxaConversao}%</span>
+                      </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </motion.div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   )

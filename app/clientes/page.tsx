@@ -6,10 +6,11 @@ import { supabase } from '@/lib/supabase'
 import { Cliente, StatusCliente, STATUS_COLORS } from '@/types'
 import ClienteModal from '@/components/ClienteModal'
 import InteracaoModal from '@/components/InteracaoModal'
+import ImportarDadosModal from '@/components/ImportarDadosModal'
 import { Interacao } from '@/types'
 import {
   Plus, Search, Filter, Edit2, Trash2, MessageSquare,
-  Phone, Mail, Building2, DollarSign, ChevronDown, X
+  Phone, Mail, Building2, DollarSign, ChevronDown, X, Table, FileText, Hash, ShieldCheck
 } from 'lucide-react'
 
 const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']
@@ -20,6 +21,7 @@ export default function ClientesPage() {
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<StatusCliente | ''>('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
   const [clienteEdit, setClienteEdit] = useState<Cliente | null>(null)
   const [interacaoModal, setInteracaoModal] = useState<{ open: boolean; cliente: Cliente | null }>({ open: false, cliente: null })
   const [userId, setUserId] = useState('')
@@ -110,7 +112,10 @@ export default function ClientesPage() {
     const matchBusca = c.nome.toLowerCase().includes(busca.toLowerCase()) ||
       (c.empresa || '').toLowerCase().includes(busca.toLowerCase()) ||
       (c.telefone || '').includes(busca) ||
-      (c.email || '').toLowerCase().includes(busca.toLowerCase())
+      (c.email || '').toLowerCase().includes(busca.toLowerCase()) ||
+      (c.cpf_cnpj || '').includes(busca) ||
+      (c.numero_pedido || '').includes(busca) ||
+      (c.numero_orcamento || '').includes(busca)
     const matchStatus = !filtroStatus || c.status === filtroStatus
     return matchBusca && matchStatus
   })
@@ -129,15 +134,26 @@ export default function ClientesPage() {
             {clientesFiltrados.length} de {clientes.length} clientes
           </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => { setClienteEdit(null); setModalOpen(true) }}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-lg shadow-blue-500/20"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Cliente
-        </motion.button>
+        <div className="flex items-center gap-3">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setImportModalOpen(true)}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all border border-slate-700"
+          >
+            <Table className="w-4 h-4 text-blue-400" />
+            Importar Dados
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { setClienteEdit(null); setModalOpen(true) }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-lg shadow-blue-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Cliente
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Filtros */}
@@ -153,7 +169,7 @@ export default function ClientesPage() {
             type="text"
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por nome, empresa, telefone ou email..."
+            placeholder="Buscar por nome, empresa, telefone, documento ou pedido..."
             className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
           />
           {busca && (
@@ -167,10 +183,11 @@ export default function ClientesPage() {
           <select
             value={filtroStatus}
             onChange={e => setFiltroStatus(e.target.value as StatusCliente | '')}
-            className="bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-8 py-2.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm appearance-none min-w-[160px]"
+            className="bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm appearance-none min-w-[180px] cursor-pointer"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2394a3b8\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.25rem' }}
           >
-            <option value="">Todos os status</option>
-            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            <option value="" className="bg-slate-800">Todos os status</option>
+            {STATUS_OPTIONS.map(s => <option key={s} value={s} className="bg-slate-800">{s}</option>)}
           </select>
         </div>
       </motion.div>
@@ -222,6 +239,11 @@ export default function ClientesPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-lg border ${STATUS_COLORS[cliente.status]}`}>
                         {cliente.status}
                       </span>
+                      {cliente.comprou_garantia && (
+                        <span className="text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3" /> GARANTIA
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                       {cliente.empresa && (
@@ -232,6 +254,11 @@ export default function ClientesPage() {
                       {cliente.telefone && (
                         <span className="text-slate-400 text-xs flex items-center gap-1">
                           <Phone className="w-3 h-3" />{cliente.telefone}
+                        </span>
+                      )}
+                      {cliente.cpf_cnpj && (
+                        <span className="text-slate-400 text-xs flex items-center gap-1">
+                          <FileText className="w-3 h-3" />{cliente.cpf_cnpj}
                         </span>
                       )}
                       {cliente.valor_potencial && (
@@ -247,9 +274,10 @@ export default function ClientesPage() {
                     <select
                       value={cliente.status}
                       onChange={e => handleUpdateStatus(cliente.id, e.target.value as StatusCliente)}
-                      className="bg-slate-700/50 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-xs focus:border-blue-500 transition-all"
+                      className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-xs focus:border-blue-500 transition-all appearance-none cursor-pointer pr-8"
+                      style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2394a3b8\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1rem' }}
                     >
-                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      {STATUS_OPTIONS.map(s => <option key={s} value={s} className="bg-slate-800">{s}</option>)}
                     </select>
                   </div>
 
@@ -278,77 +306,84 @@ export default function ClientesPage() {
                     </button>
                     <button
                       onClick={() => toggleExpand(cliente.id)}
-                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all ${expandedId === cliente.id ? 'bg-slate-700 text-white' : ''}`}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-all ${expandedId === cliente.id ? 'rotate-180' : ''}`}
                     >
-                      <motion.div animate={{ rotate: expandedId === cliente.id ? 180 : 0 }}>
-                        <ChevronDown className="w-4 h-4" />
-                      </motion.div>
+                      <ChevronDown className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Expansão - histórico de interações */}
+                {/* Detalhes expandidos */}
                 <AnimatePresence>
                   {expandedId === cliente.id && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden border-t border-slate-700/50"
+                      className="border-t border-slate-700/50 bg-slate-900/30"
                     >
-                      <div className="p-4 space-y-3">
-                        {/* Detalhes */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          {cliente.email && (
-                            <div className="flex items-center gap-2 text-sm text-slate-400">
-                              <Mail className="w-4 h-4 text-slate-500" />
-                              <span className="truncate">{cliente.email}</span>
+                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Info Adicional */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Informações Detalhadas</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-[10px] text-slate-500 uppercase">Nº Pedido</p>
+                              <p className="text-sm text-white flex items-center gap-1"><Hash className="w-3 h-3 text-slate-500" /> {cliente.numero_pedido || '-'}</p>
                             </div>
-                          )}
+                            <div>
+                              <p className="text-[10px] text-slate-500 uppercase">Nº Orçamento</p>
+                              <p className="text-sm text-white flex items-center gap-1"><Hash className="w-3 h-3 text-slate-500" /> {cliente.numero_orcamento || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-500 uppercase">Email</p>
+                              <p className="text-sm text-white truncate">{cliente.email || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-500 uppercase">Última Interação</p>
+                              <p className="text-sm text-white">
+                                {cliente.ultima_interacao ? new Date(cliente.ultima_interacao).toLocaleDateString('pt-BR') : 'Nunca'}
+                              </p>
+                            </div>
+                          </div>
                           {cliente.observacoes && (
-                            <div className="sm:col-span-3 bg-slate-700/30 rounded-xl p-3">
-                              <p className="text-slate-400 text-xs font-medium mb-1">Observações</p>
-                              <p className="text-slate-300 text-sm">{cliente.observacoes}</p>
+                            <div>
+                              <p className="text-[10px] text-slate-500 uppercase">Observações</p>
+                              <p className="text-sm text-slate-300 mt-1 bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">{cliente.observacoes}</p>
                             </div>
                           )}
                         </div>
 
                         {/* Histórico */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Histórico de Interações</p>
-                            <button
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Últimas Interações</h4>
+                            <button 
                               onClick={() => setInteracaoModal({ open: true, cliente })}
-                              className="text-blue-400 text-xs hover:text-blue-300 flex items-center gap-1"
+                              className="text-[10px] text-blue-400 hover:text-blue-300 font-bold uppercase"
                             >
-                              <Plus className="w-3 h-3" />Nova interação
+                              + Adicionar
                             </button>
                           </div>
-                          {interacoes[cliente.id]?.length > 0 ? (
-                            <div className="space-y-2">
-                              {interacoes[cliente.id].map(int => (
-                                <div key={int.id} className="flex gap-3 bg-slate-700/30 rounded-xl p-3">
-                                  <div className="flex-shrink-0 w-6 h-6 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                                    <MessageSquare className="w-3 h-3 text-blue-400" />
+                          <div className="space-y-2">
+                            {!interacoes[cliente.id] ? (
+                              <div className="h-20 flex items-center justify-center">
+                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            ) : interacoes[cliente.id].length === 0 ? (
+                              <p className="text-xs text-slate-600 italic py-4 text-center">Nenhuma interação registrada</p>
+                            ) : (
+                              interacoes[cliente.id].map(inter => (
+                                <div key={inter.id} className="bg-slate-800/50 p-2 rounded-lg border border-slate-700/30">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-bold text-blue-400">{inter.tipo}</span>
+                                    <span className="text-[10px] text-slate-500">{new Date(inter.created_at).toLocaleDateString('pt-BR')}</span>
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-blue-400 text-xs font-medium">{int.tipo}</span>
-                                      <span className="text-slate-500 text-xs">
-                                        {new Date(int.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                      </span>
-                                    </div>
-                                    <p className="text-slate-300 text-sm mt-0.5">{int.descricao}</p>
-                                  </div>
+                                  <p className="text-xs text-slate-300 line-clamp-2">{inter.descricao}</p>
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-slate-500 text-sm text-center py-3">
-                              Nenhuma interação registrada ainda
-                            </p>
-                          )}
+                              ))
+                            )}
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -360,21 +395,26 @@ export default function ClientesPage() {
         </div>
       )}
 
-      {/* Modal cliente */}
+      {/* Modais */}
       <ClienteModal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setClienteEdit(null) }}
+        onClose={() => setModalOpen(false)}
         onSave={handleSaveCliente}
         cliente={clienteEdit}
       />
 
-      {/* Modal interação */}
       <InteracaoModal
         open={interacaoModal.open}
         onClose={() => setInteracaoModal({ open: false, cliente: null })}
         onSave={handleSaveInteracao}
         clienteId={interacaoModal.cliente?.id || ''}
         clienteNome={interacaoModal.cliente?.nome || ''}
+      />
+
+      <ImportarDadosModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={() => fetchClientes(userId)}
       />
     </div>
   )

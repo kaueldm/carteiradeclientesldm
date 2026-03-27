@@ -18,12 +18,15 @@ import {
   Menu,
   X,
   Bell,
+  Target,
+  ShieldAlert,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
+  { href: '/metas', label: 'Metas do Mês', icon: Target },
   { href: '/notificacoes', label: 'Notificações', icon: Bell },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart3 },
   { href: '/perfil', label: 'Meu Perfil', icon: User },
@@ -40,11 +43,23 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    async function carregarNotificacoes() {
+    async function carregarDados() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
+
+      // Verificar se é admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+      
+      if (profile?.role === 'admin') {
+        setIsAdmin(true)
+      }
 
       const { data } = await supabase
         .from('notificacoes')
@@ -54,7 +69,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
       setNotificacoesNaoLidas(data?.length || 0)
     }
 
-    carregarNotificacoes()
+    carregarDados()
 
     // Subscribe para atualizações em tempo real
     const channel = supabase
@@ -63,7 +78,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notificacoes' },
         () => {
-          carregarNotificacoes()
+          carregarDados()
         }
       )
       .subscribe()
@@ -124,7 +139,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-3 h-3 bg-ldm-orange rounded-full"
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full"
                     />
                   )}
                 </div>
@@ -144,6 +159,36 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
             </Link>
           )
         })}
+
+        {/* Admin Link */}
+        {isAdmin && (
+          <Link href="/admin" onClick={() => setMobileOpen(false)}>
+            <motion.div
+              whileHover={{ x: collapsed ? 0 : 4 }}
+              whileTap={{ scale: 0.97 }}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 cursor-pointer relative ${
+                pathname.startsWith('/admin')
+                  ? 'bg-red-600/20 border border-red-500/30 text-red-400'
+                  : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'
+              } ${collapsed ? 'justify-center' : ''}`}
+              title={collapsed ? 'Painel Admin' : undefined}
+            >
+              <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.span
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                  >
+                    Painel Admin
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </Link>
+        )}
       </nav>
 
       {/* Usuário e logout */}

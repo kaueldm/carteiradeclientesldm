@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Save, User, Building2, Phone, Mail, DollarSign, FileText } from 'lucide-react'
+import { X, Save, User, Building2, Phone, Mail, DollarSign, FileText, Hash, ShieldCheck } from 'lucide-react'
 import { Cliente, StatusCliente } from '@/types'
 
 interface ClienteModalProps {
@@ -23,6 +23,10 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
     status: 'Novo' as StatusCliente,
     valor_potencial: '',
     observacoes: '',
+    cpf_cnpj: '',
+    numero_pedido: '',
+    numero_orcamento: '',
+    comprou_garantia: false,
   })
   const [loading, setLoading] = useState(false)
 
@@ -36,6 +40,10 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
         status: cliente.status || 'Novo',
         valor_potencial: cliente.valor_potencial?.toString() || '',
         observacoes: cliente.observacoes || '',
+        cpf_cnpj: cliente.cpf_cnpj || '',
+        numero_pedido: cliente.numero_pedido || '',
+        numero_orcamento: cliente.numero_orcamento || '',
+        comprou_garantia: cliente.comprou_garantia || false,
       })
     } else {
       setForm({
@@ -46,6 +54,10 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
         status: 'Novo',
         valor_potencial: '',
         observacoes: '',
+        cpf_cnpj: '',
+        numero_pedido: '',
+        numero_orcamento: '',
+        comprou_garantia: false,
       })
     }
   }, [cliente, open])
@@ -80,10 +92,10 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="relative bg-slate-800 border border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-700/50">
+            <div className="flex items-center justify-between p-5 border-b border-slate-700/50 sticky top-0 bg-slate-800 z-10">
               <h2 className="text-lg font-semibold text-white">
                 {cliente ? 'Editar Cliente' : 'Novo Cliente'}
               </h2>
@@ -96,7 +108,7 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleSubmit} className="p-5 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Nome */}
                 <div className="sm:col-span-2">
@@ -111,6 +123,21 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
                       onChange={e => setForm({ ...form, nome: e.target.value })}
                       required
                       placeholder="Nome completo"
+                      className="w-full bg-slate-700/50 border border-slate-600 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* CPF/CNPJ */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">CPF ou CNPJ</label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={form.cpf_cnpj}
+                      onChange={e => setForm({ ...form, cpf_cnpj: e.target.value })}
+                      placeholder="000.000.000-00"
                       className="w-full bg-slate-700/50 border border-slate-600 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
                     />
                   </div>
@@ -161,16 +188,47 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
                   </div>
                 </div>
 
+                {/* Nº Pedido */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">Nº Pedido</label>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={form.numero_pedido}
+                      onChange={e => setForm({ ...form, numero_pedido: e.target.value })}
+                      placeholder="000000"
+                      className="w-full bg-slate-700/50 border border-slate-600 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Nº Orçamento */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">Nº Orçamento</label>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      value={form.numero_orcamento}
+                      onChange={e => setForm({ ...form, numero_orcamento: e.target.value })}
+                      placeholder="000000"
+                      className="w-full bg-slate-700/50 border border-slate-600 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
                 {/* Status */}
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1.5">Status</label>
                   <select
                     value={form.status}
                     onChange={e => setForm({ ...form, status: e.target.value as StatusCliente })}
-                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
+                    className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-2.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm appearance-none cursor-pointer"
+                    style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2394a3b8\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.25rem' }}
                   >
                     {STATUS_OPTIONS.map(s => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s} className="bg-slate-800 text-white">{s}</option>
                     ))}
                   </select>
                 </div>
@@ -192,6 +250,23 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
                   </div>
                 </div>
 
+                {/* Comprou Garantia */}
+                <div className="sm:col-span-2 flex items-center gap-3 p-3 bg-slate-700/30 rounded-xl border border-slate-600/50">
+                  <div className="flex items-center h-5">
+                    <input
+                      id="comprou_garantia"
+                      type="checkbox"
+                      checked={form.comprou_garantia}
+                      onChange={e => setForm({ ...form, comprou_garantia: e.target.checked })}
+                      className="w-5 h-5 rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-700"
+                    />
+                  </div>
+                  <label htmlFor="comprou_garantia" className="flex items-center gap-2 text-sm font-medium text-slate-300 cursor-pointer">
+                    <ShieldCheck className="w-4 h-4 text-blue-400" />
+                    Cliente comprou garantia?
+                  </label>
+                </div>
+
                 {/* Observações */}
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-slate-300 mb-1.5">Observações</label>
@@ -209,7 +284,7 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
               </div>
 
               {/* Botões */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 sticky bottom-0 bg-slate-800 py-2">
                 <button
                   type="button"
                   onClick={onClose}
@@ -228,7 +303,7 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
                   ) : (
                     <>
                       <Save className="w-4 h-4" />
-                      {cliente ? 'Salvar' : 'Adicionar'}
+                      {cliente ? 'Salvar Alterações' : 'Adicionar Cliente'}
                     </>
                   )}
                 </motion.button>
