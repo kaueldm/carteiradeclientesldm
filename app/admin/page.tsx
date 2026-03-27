@@ -6,13 +6,12 @@ import { supabase } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { MessageSquare, LogOut, Bell, Filter, ShieldCheck, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-
-// Correcting imports from framer-motion
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface VendedorMetricas {
   id: string
   nome: string
+  email: string
   totalClientes: number
   clientesFechados: number
   valorTotal: number
@@ -31,13 +30,35 @@ interface ClienteAdmin {
   user_id: string
   comprou_garantia?: boolean
   created_at: string
+  vendedor_nome?: string
 }
+
+interface MetaAdmin {
+  id: string
+  user_id: string
+  mes_ano: string
+  meta_venda: number
+  meta_garantia: number
+}
+
+// Lista de vendedores permitidos
+const VENDEDORES_PERMITIDOS = [
+  { email: 'ana@ldm.com', nome: 'Ana Carolina' },
+  { email: 'bruna@ldm.com', nome: 'Bruna Aparecida' },
+  { email: 'bruno@ldm.com', nome: 'Bruno Vieira' },
+  { email: 'tatiani@ldm.com', nome: 'Tatiani Aparecida' },
+  { email: 'jessica@ldm.com', nome: 'Jessica Alves' },
+  { email: 'vitor@ldm.com', nome: 'Vitor Costa' },
+  { email: 'mario@ldm.com', nome: 'Mario Furtado' },
+]
 
 export default function AdminPage() {
   const router = useRouter()
   const [vendedores, setVendedores] = useState<VendedorMetricas[]>([])
   const [clientes, setClientes] = useState<ClienteAdmin[]>([])
+  const [metas, setMetas] = useState<MetaAdmin[]>([])
   const [loading, setLoading] = useState(true)
+  const [adminEmail, setAdminEmail] = useState('')
 
   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
   const [notificacaoTitulo, setNotificacaoTitulo] = useState('')
@@ -50,6 +71,8 @@ export default function AdminPage() {
       router.push('/login')
       return
     }
+
+    setAdminEmail(data.session.user.email || '')
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -66,14 +89,16 @@ export default function AdminPage() {
     try {
       setLoading(true)
 
+      // Carregar todos os vendedores permitidos
       const { data: usuarios, error: usuariosError } = await supabase
         .from('profiles')
-        .select('id, nome_completo')
-        .eq('role', 'vendedor')
+        .select('id, nome_completo, email')
+        .in('email', VENDEDORES_PERMITIDOS.map(v => v.email))
         .order('nome_completo', { ascending: true })
 
       if (usuariosError) throw usuariosError
 
+      // Carregar todos os clientes
       const { data: todosClientes, error: clientesError } = await supabase
         .from('clientes')
         .select('*')
@@ -81,10 +106,28 @@ export default function AdminPage() {
 
       if (clientesError) throw clientesError
 
-      setClientes(todosClientes || [])
+      // Carregar todas as metas
+      const { data: todasMetas, error: metasError } = await supabase
+        .from('metas')
+        .select('*')
 
+      if (metasError) throw metasError
+
+      // Criar mapa de vendedores para referência rápida
+      const vendedoresMap = new Map((usuarios || []).map(u => [u.id, u]))
+
+      // Enriquecer clientes com nome do vendedor
+      const clientesEnriquecidos = (todosClientes || []).map(c => ({
+        ...c,
+        vendedor_nome: vendedoresMap.get(c.user_id)?.nome_completo || 'Desconhecido'
+      }))
+
+      setClientes(clientesEnriquecidos)
+      setMetas(todasMetas || [])
+
+      // Calcular métricas para cada vendedor
       const metricas: VendedorMetricas[] = (usuarios || []).map((user) => {
-        const clientesVendedor = (todosClientes || []).filter(c => c.user_id === user.id)
+        const clientesVendedor = clientesEnriquecidos.filter(c => c.user_id === user.id)
         const totalClientes = clientesVendedor.length
         const clientesFechados = clientesVendedor.filter(c => c.status === 'Fechado').length
         const valorTotal = clientesVendedor
@@ -98,6 +141,7 @@ export default function AdminPage() {
         return {
           id: user.id,
           nome: user.nome_completo || 'Desconhecido',
+          email: user.email || '',
           totalClientes,
           clientesFechados,
           valorTotal,
@@ -116,8 +160,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     verificarAdmin()
+  }, [verificarAdmin])
+
+  useEffect(() => {
     carregarDados()
-  }, [verificarAdmin, carregarDados])
+  }, [carregarDados])
 
   async function enviarNotificacao() {
     if (!notificacaoTitulo || !notificacaoMsg) return
@@ -176,7 +223,10 @@ export default function AdminPage() {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
                 <ShieldCheck className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-white hidden sm:block">Painel Administrativo</h1>
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-bold text-white">Painel Administrativo</h1>
+                <p className="text-xs text-slate-400">Gestão de Vendedores</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -301,7 +351,10 @@ export default function AdminPage() {
                         <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 font-bold text-xs">
                           {v.nome.charAt(0)}
                         </div>
-                        <span className="font-medium text-white">{v.nome}</span>
+                        <div>
+                          <span className="font-medium text-white block">{v.nome}</span>
+                          <span className="text-xs text-slate-500">{v.email}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center font-medium">{v.totalClientes}</td>
@@ -323,7 +376,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Charts Section */}
+        {/* Gráfico de Vendas */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
             <h3 className="text-white font-bold mb-6">Vendas por Vendedor</h3>
@@ -341,6 +394,75 @@ export default function AdminPage() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
+
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+            <h3 className="text-white font-bold mb-6">Garantias por Vendedor</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={vendedores.filter(v => v.vendasGarantia > 0)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="nome" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Bar dataKey="vendasGarantia" fill="#f97316" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabela de Clientes Recentes */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="p-6 border-b border-slate-800">
+            <h3 className="text-lg font-bold text-white">Últimos Clientes Adicionados</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-800/50">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Cliente</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Vendedor</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Empresa</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {clientesFiltrados.slice(0, 10).map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 font-bold text-xs">
+                          {c.nome.charAt(0)}
+                        </div>
+                        <span className="font-medium text-white">{c.nome}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-400">{c.vendedor_nome}</td>
+                    <td className="px-6 py-4 text-sm text-slate-400">{c.empresa || '-'}</td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs px-2 py-1 rounded-lg border ${
+                        {
+                          'Novo': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+                          'Em Contato': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+                          'Proposta': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+                          'Negociação': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+                          'Fechado': 'bg-green-500/20 text-green-400 border-green-500/30',
+                          'Perdido': 'bg-red-500/20 text-red-400 border-red-500/30',
+                        }[c.status] || 'bg-slate-700/30 text-slate-400 border-slate-600/30'
+                      }`}>
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right font-bold text-white">R$ {(c.valor_potencial || 0).toLocaleString('pt-BR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
