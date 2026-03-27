@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { motion } from 'framer-motion'
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Users, TrendingUp, MessageSquare, LogOut, Bell, Filter, ShieldCheck, DollarSign, ArrowLeft } from 'lucide-react'
-import Image from 'next/image'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { MessageSquare, LogOut, Bell, Filter, ShieldCheck, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+
+// Correcting imports from framer-motion
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface VendedorMetricas {
   id: string
@@ -43,15 +44,7 @@ export default function AdminPage() {
   const [notificacaoMsg, setNotificacaoMsg] = useState('')
   const [abrirNotif, setAbrirNotif] = useState(false)
 
-  useEffect(() => {
-    const init = async () => {
-      await verificarAdmin()
-      await carregarDados()
-    }
-    init()
-  }, [])
-
-  async function verificarAdmin() {
+  const verificarAdmin = useCallback(async () => {
     const { data } = await supabase.auth.getSession()
     if (!data.session) {
       router.push('/login')
@@ -67,13 +60,12 @@ export default function AdminPage() {
     if (profile?.role !== 'admin') {
       router.push('/dashboard')
     }
-  }
+  }, [router])
 
-  async function carregarDados() {
+  const carregarDados = useCallback(async () => {
     try {
       setLoading(true)
 
-      // Carregar todos os vendedores (incluindo os sem clientes)
       const { data: usuarios, error: usuariosError } = await supabase
         .from('profiles')
         .select('id, nome_completo')
@@ -82,7 +74,6 @@ export default function AdminPage() {
 
       if (usuariosError) throw usuariosError
 
-      // Carregar todos os clientes de todos os vendedores
       const { data: todosClientes, error: clientesError } = await supabase
         .from('clientes')
         .select('*')
@@ -92,7 +83,6 @@ export default function AdminPage() {
 
       setClientes(todosClientes || [])
 
-      // Calcular métricas para cada vendedor
       const metricas: VendedorMetricas[] = (usuarios || []).map((user) => {
         const clientesVendedor = (todosClientes || []).filter(c => c.user_id === user.id)
         const totalClientes = clientesVendedor.length
@@ -122,7 +112,12 @@ export default function AdminPage() {
       console.error('Erro ao carregar dados:', error)
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    verificarAdmin()
+    carregarDados()
+  }, [verificarAdmin, carregarDados])
 
   async function enviarNotificacao() {
     if (!notificacaoTitulo || !notificacaoMsg) return
@@ -325,6 +320,27 @@ export default function AdminPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
+            <h3 className="text-white font-bold mb-6">Vendas por Vendedor</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={vendedores.filter(v => v.valorTotal > 0)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <XAxis dataKey="nome" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Bar dataKey="valorTotal" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>

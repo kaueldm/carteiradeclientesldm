@@ -5,12 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Table } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-import { Cliente, StatusCliente } from '@/types'
+import { StatusCliente } from '@/types'
 
 interface ImportarDadosModalProps {
   open: boolean
   onClose: () => void
   onSuccess: () => void
+}
+
+interface ExcelRow {
+  [key: string]: string | number | undefined
 }
 
 export default function ImportarDadosModal({ open, onClose, onSuccess }: ImportarDadosModalProps) {
@@ -37,7 +41,7 @@ export default function ImportarDadosModal({ open, onClose, onSuccess }: Importa
           const wb = XLSX.read(bstr, { type: 'binary' })
           const wsname = wb.SheetNames[0]
           const ws = wb.Sheets[wsname]
-          const data = XLSX.utils.sheet_to_json(ws) as any[]
+          const data = XLSX.utils.sheet_to_json(ws) as ExcelRow[]
 
           if (data.length === 0) {
             throw new Error('A planilha está vazia')
@@ -52,7 +56,7 @@ export default function ImportarDadosModal({ open, onClose, onSuccess }: Importa
               const key = Object.keys(row).find(k => 
                 keys.some(search => k.toLowerCase().includes(search.toLowerCase()))
               )
-              return key ? row[key] : undefined
+              return key ? String(row[key]) : undefined
             }
 
             return {
@@ -88,16 +92,18 @@ export default function ImportarDadosModal({ open, onClose, onSuccess }: Importa
 
           setStep('success')
           onSuccess()
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Erro ao processar dados:', err)
-          setError(err.message || 'Erro ao processar a planilha')
+          const errorMessage = err instanceof Error ? err.message : 'Erro ao processar a planilha'
+          setError(errorMessage)
           setStep('error')
         }
       }
       reader.readAsBinaryString(file)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao ler arquivo:', err)
-      setError(err.message || 'Erro ao ler o arquivo')
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao ler o arquivo'
+      setError(errorMessage)
       setStep('error')
     }
   }

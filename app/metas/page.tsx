@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Target, Save, TrendingUp, ShieldCheck, Calendar, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -20,11 +20,7 @@ export default function MetasPage() {
   })
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  useEffect(() => {
-    carregarMeta()
-  }, [mesAno])
-
-  async function carregarMeta() {
+  const carregarMeta = useCallback(async () => {
     setLoading(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -49,7 +45,11 @@ export default function MetasPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [mesAno])
+
+  useEffect(() => {
+    carregarMeta()
+  }, [carregarMeta])
 
   async function handleSave() {
     setSaving(true)

@@ -10,7 +10,7 @@ import ImportarDadosModal from '@/components/ImportarDadosModal'
 import { Interacao } from '@/types'
 import {
   Plus, Search, Filter, Edit2, Trash2, MessageSquare,
-  Phone, Mail, Building2, DollarSign, ChevronDown, X, Table, FileText, Hash, ShieldCheck
+  Phone, Building2, DollarSign, ChevronDown, X, Table, FileText, Hash, ShieldCheck
 } from 'lucide-react'
 
 const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']
