@@ -17,9 +17,22 @@ interface VendedorMetricas {
   taxaConversao: number
 }
 
+interface ClienteAdmin {
+  id: string
+  nome: string
+  empresa?: string
+  telefone?: string
+  email?: string
+  status: string
+  valor_potencial?: number
+  user_id: string
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const [vendedores, setVendedores] = useState<VendedorMetricas[]>([])
+  const [clientes, setClientes] = useState<ClienteAdmin[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
   const [notificacaoTitulo, setNotificacaoTitulo] = useState('')
@@ -29,7 +42,7 @@ export default function AdminPage() {
   useEffect(() => {
     const init = async () => {
       await verificarAdmin()
-      await carregarMetricas()
+      await carregarDados()
     }
     init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,26 +66,39 @@ export default function AdminPage() {
     }
   }
 
-  async function carregarMetricas() {
+  async function carregarDados() {
     try {
+      setLoading(true)
+
+      // Carregar todos os vendedores
       const { data: usuarios } = await supabase
         .from('profiles')
         .select('id, nome_completo')
         .eq('role', 'vendedor')
 
-      if (!usuarios) return
+      if (!usuarios || usuarios.length === 0) {
+        setVendedores([])
+        setClientes([])
+        setLoading(false)
+        return
+      }
 
+      // Carregar todos os clientes de todos os vendedores
+      const { data: todosClientes } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      setClientes(todosClientes || [])
+
+      // Calcular métricas para cada vendedor
       const metricas: VendedorMetricas[] = []
 
       for (const user of usuarios) {
-        const { data: clientes } = await supabase
-          .from('clientes')
-          .select('*')
-          .eq('user_id', user.id)
-
-        const totalClientes = clientes?.length || 0
-        const clientesFechados = clientes?.filter(c => c.status === 'Fechado').length || 0
-        const valorTotal = clientes?.reduce((sum, c) => sum + (c.valor_potencial || 0), 0) || 0
+        const clientesVendedor = (todosClientes || []).filter(c => c.user_id === user.id)
+        const totalClientes = clientesVendedor.length
+        const clientesFechados = clientesVendedor.filter(c => c.status === 'Fechado').length
+        const valorTotal = clientesVendedor.reduce((sum, c) => sum + (c.valor_potencial || 0), 0)
         const taxaConversao = totalClientes > 0 ? (clientesFechados / totalClientes) * 100 : 0
 
         metricas.push({
@@ -86,8 +112,10 @@ export default function AdminPage() {
       }
 
       setVendedores(metricas)
+      setLoading(false)
     } catch (error) {
-      console.error('Erro ao carregar métricas:', error)
+      console.error('Erro ao carregar dados:', error)
+      setLoading(false)
     }
   }
 
@@ -115,7 +143,22 @@ export default function AdminPage() {
     router.push('/login')
   }
 
+  // Filtrar dados conforme seleção
   const dadosFiltrados = filtroVendedor === 'todos' ? vendedores : vendedores.filter(v => v.id === filtroVendedor)
+  const clientesFiltrados = filtroVendedor === 'todos' 
+    ? clientes 
+    : clientes.filter(c => c.user_id === filtroVendedor)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-ldm-black via-slate-900 to-ldm-blue-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-ldm-orange/30 border-t-ldm-orange rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Carregando dados...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-ldm-black via-slate-900 to-ldm-blue-dark">
@@ -332,7 +375,7 @@ export default function AdminPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-x-auto"
+          className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-x-auto mb-8"
         >
           <h3 className="text-lg font-bold text-white mb-4">Detalhes dos Vendedores</h3>
           <table className="w-full text-sm">
@@ -351,10 +394,66 @@ export default function AdminPage() {
                   <td className="py-3 px-4 text-white">{vendedor.nome}</td>
                   <td className="py-3 px-4 text-gray-300">{vendedor.totalClientes}</td>
                   <td className="py-3 px-4 text-green-400">{vendedor.clientesFechados}</td>
-                  <td className="py-3 px-4 text-ldm-orange">R$ {(vendedor.valorTotal / 1000).toFixed(1)}k</td>
+                  <td className="py-3 px-4 text-blue-400">R$ {(vendedor.valorTotal / 1000).toFixed(1)}k</td>
                   <td className="py-3 px-4 text-purple-400">{vendedor.taxaConversao}%</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </motion.div>
+
+        {/* Tabela de Clientes */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-x-auto"
+        >
+          <h3 className="text-lg font-bold text-white mb-4">
+            {filtroVendedor === 'todos' ? 'Todos os Clientes' : `Clientes de ${vendedores.find(v => v.id === filtroVendedor)?.nome}`}
+          </h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="text-left py-3 px-4 text-ldm-orange">Nome</th>
+                <th className="text-left py-3 px-4 text-ldm-orange">Empresa</th>
+                <th className="text-left py-3 px-4 text-ldm-orange">Telefone</th>
+                <th className="text-left py-3 px-4 text-ldm-orange">Email</th>
+                <th className="text-left py-3 px-4 text-ldm-orange">Status</th>
+                <th className="text-left py-3 px-4 text-ldm-orange">Valor Potencial</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientesFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-4 px-4 text-center text-gray-500">
+                    Nenhum cliente encontrado
+                  </td>
+                </tr>
+              ) : (
+                clientesFiltrados.map((cliente) => (
+                  <tr key={cliente.id} className="border-b border-white/5 hover:bg-white/5 transition">
+                    <td className="py-3 px-4 text-white">{cliente.nome}</td>
+                    <td className="py-3 px-4 text-gray-300">{cliente.empresa || '-'}</td>
+                    <td className="py-3 px-4 text-gray-300">{cliente.telefone || '-'}</td>
+                    <td className="py-3 px-4 text-gray-300">{cliente.email || '-'}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        cliente.status === 'Fechado' ? 'bg-green-500/20 text-green-400' :
+                        cliente.status === 'Perdido' ? 'bg-red-500/20 text-red-400' :
+                        cliente.status === 'Negociação' ? 'bg-orange-500/20 text-orange-400' :
+                        cliente.status === 'Proposta' ? 'bg-purple-500/20 text-purple-400' :
+                        cliente.status === 'Em Contato' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {cliente.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-green-400">
+                      {cliente.valor_potencial ? `R$ ${(cliente.valor_potencial / 1000).toFixed(1)}k` : '-'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </motion.div>
