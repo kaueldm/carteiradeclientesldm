@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import { Notificacao } from '@/types'
-import { Bell, Trash2, CheckCircle2 } from 'lucide-react'
+import { Bell, Trash2, CheckCircle2, ArrowLeft } from 'lucide-react'
 
 export default function NotificacoesPage() {
+  const router = useRouter()
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -86,6 +88,15 @@ export default function NotificacoesPage() {
         className="mb-6"
       >
         <div className="flex items-center gap-3 mb-2">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => router.push('/dashboard')}
+            className="p-2 hover:bg-white/10 rounded-lg transition"
+            title="Voltar ao Dashboard"
+          >
+            <ArrowLeft className="w-6 h-6 text-ldm-orange" />
+          </motion.button>
           <Bell className="w-8 h-8 text-ldm-orange" />
           <h1 className="text-3xl font-bold bg-gradient-to-r from-ldm-orange to-ldm-orange-light bg-clip-text text-transparent">
             Notificações

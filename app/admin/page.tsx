@@ -70,11 +70,18 @@ export default function AdminPage() {
     try {
       setLoading(true)
 
-      // Carregar todos os vendedores
-      const { data: usuarios } = await supabase
+      // Carregar todos os vendedores (incluindo os sem clientes)
+      const { data: usuarios, error: usuariosError } = await supabase
         .from('profiles')
         .select('id, nome_completo')
         .eq('role', 'vendedor')
+        .order('nome_completo', { ascending: true })
+
+      if (usuariosError) {
+        console.error('Erro ao carregar usuários:', usuariosError)
+        setLoading(false)
+        return
+      }
 
       if (!usuarios || usuarios.length === 0) {
         setVendedores([])
@@ -84,32 +91,34 @@ export default function AdminPage() {
       }
 
       // Carregar todos os clientes de todos os vendedores
-      const { data: todosClientes } = await supabase
+      const { data: todosClientes, error: clientesError } = await supabase
         .from('clientes')
         .select('*')
         .order('created_at', { ascending: false })
 
+      if (clientesError) {
+        console.error('Erro ao carregar clientes:', clientesError)
+      }
+
       setClientes(todosClientes || [])
 
       // Calcular métricas para cada vendedor
-      const metricas: VendedorMetricas[] = []
-
-      for (const user of usuarios) {
+      const metricas: VendedorMetricas[] = usuarios.map((user) => {
         const clientesVendedor = (todosClientes || []).filter(c => c.user_id === user.id)
         const totalClientes = clientesVendedor.length
         const clientesFechados = clientesVendedor.filter(c => c.status === 'Fechado').length
-        const valorTotal = clientesVendedor.reduce((sum, c) => sum + (c.valor_potencial || 0), 0)
+        const valorTotal = clientesVendedor.reduce((sum, c) => sum + (Number(c.valor_potencial) || 0), 0)
         const taxaConversao = totalClientes > 0 ? (clientesFechados / totalClientes) * 100 : 0
 
-        metricas.push({
+        return {
           id: user.id,
           nome: user.nome_completo || 'Desconhecido',
           totalClientes,
           clientesFechados,
           valorTotal,
           taxaConversao: Math.round(taxaConversao),
-        })
-      }
+        }
+      })
 
       setVendedores(metricas)
       setLoading(false)
