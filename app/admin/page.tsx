@@ -56,9 +56,9 @@ export default function AdminPage() {
   const router = useRouter()
   const [vendedores, setVendedores] = useState<VendedorMetricas[]>([])
   const [clientes, setClientes] = useState<ClienteAdmin[]>([])
-  const [metas, setMetas] = useState<MetaAdmin[]>([])
+  // const [metas, setMetas] = useState<MetaAdmin[]>([])
   const [loading, setLoading] = useState(true)
-  const [adminEmail, setAdminEmail] = useState('')
+  // const [adminEmail, setAdminEmail] = useState('')
 
   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
   const [notificacaoTitulo, setNotificacaoTitulo] = useState('')
@@ -72,7 +72,7 @@ export default function AdminPage() {
       return
     }
 
-    setAdminEmail(data.session.user.email || '')
+    // setAdminEmail(data.session.user.email || '')
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -123,7 +123,7 @@ export default function AdminPage() {
       }))
 
       setClientes(clientesEnriquecidos)
-      setMetas(todasMetas || [])
+      // setMetas(todasMetas || [])
 
       // Calcular métricas para cada vendedor
       const metricas: VendedorMetricas[] = (usuarios || []).map((user) => {
