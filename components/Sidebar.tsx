@@ -17,12 +17,14 @@ import {
   User,
   Menu,
   X,
+  Bell,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
+  { href: '/notificacoes', label: 'Notificações', icon: Bell },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart3 },
   { href: '/perfil', label: 'Meu Perfil', icon: User },
 ]

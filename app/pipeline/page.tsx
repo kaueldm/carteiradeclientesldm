@@ -112,9 +112,9 @@ export default function PipelinePage() {
         </motion.button>
       </motion.div>
 
-      {/* Kanban Container com scroll interno */}
+      {/* Kanban Container com grid responsivo */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 flex gap-4 overflow-x-auto overflow-y-hidden pb-4 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 p-4 auto-rows-max overflow-y-auto">
           {COLUNAS.map((status) => {
             const clientesColuna = getClientesByStatus(status)
             const valorColuna = getValorByStatus(status)
@@ -124,7 +124,7 @@ export default function PipelinePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: COLUNAS.indexOf(status) * 0.05 }}
-                className={`flex-shrink-0 w-80 bg-white/5 backdrop-blur-xl border-t-4 ${STATUS_PIPELINE_COLORS[status]} rounded-2xl flex flex-col shadow-lg hover:shadow-xl transition-all`}
+                className={`w-full bg-white/5 backdrop-blur-xl border-t-4 ${STATUS_PIPELINE_COLORS[status]} rounded-2xl flex flex-col shadow-lg hover:shadow-xl transition-all h-fit max-h-[calc(100vh-200px)]`}
               >
                 {/* Header coluna */}
                 <div className="p-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">

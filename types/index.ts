@@ -88,3 +88,13 @@ export const STATUS_PIPELINE_COLORS: Record<StatusCliente, string> = {
   'Fechado': 'border-green-500',
   'Perdido': 'border-red-500',
 }
+
+export interface Notificacao {
+  id: string
+  titulo: string
+  mensagem: string
+  criada_por: string
+  lida: boolean
+  created_at: string
+  user_id?: string
+}
