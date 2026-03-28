@@ -238,17 +238,17 @@ export function validateClienteLine(line: Record<string, string | number | boole
   
   // Detectar estado atual se não fornecido
   if (!cleaned.estado_atual && cleaned.estado_atual_texto) {
-    cleaned.estado_atual = detectEstadoAtual(String(cleaned.estado_atual_texto))
+    cleaned.estado_atual = detectEstadoAtual(String(cleaned.estado_atual_texto)) || undefined
   }
   
   // Detectar status se não fornecido
   if (!cleaned.status && cleaned.status_texto) {
-    cleaned.status = detectStatus(String(cleaned.status_texto))
+    cleaned.status = (detectStatus(String(cleaned.status_texto)) as string | undefined) || undefined
   }
   
   // Detectar tipo se não fornecido
   if (!cleaned.tipo && cleaned.tipo_texto) {
-    cleaned.tipo = detectTipo(String(cleaned.tipo_texto))
+    cleaned.tipo = (detectTipo(String(cleaned.tipo_texto)) as "orcamento" | "pedido" | undefined) || undefined
   }
   
   // Detectar garantia

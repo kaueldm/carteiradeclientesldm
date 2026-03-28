@@ -319,6 +319,7 @@ export default function OrcamentosPage() {
         onClose={() => setInteracaoModal({ open: false, cliente: null })}
         onSave={handleSaveInteracao}
         clienteId={interacaoModal.cliente?.id || ''}
+        clienteNome={interacaoModal.cliente?.nome || ''}
       />
 
       <ImportarDadosModalV2

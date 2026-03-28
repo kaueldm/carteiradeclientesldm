@@ -323,7 +323,8 @@ export default function AdminPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
                   itemStyle={{ color: '#fff' }}
-                  formatter={(value: string | number | undefined) => value ? [`R$ ${Number(value).toLocaleString('pt-BR')}`, 'Vendas'] : ['R$ 0', 'Vendas']}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR')}`, 'Vendas']}
                 />
                 <Bar dataKey="valorTotal" fill="#3b82f6" radius={[6, 6, 0, 0]} />
               </BarChart>

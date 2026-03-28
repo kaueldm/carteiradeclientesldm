@@ -30,7 +30,7 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
     garantia: false,
     valor_garantia: '',
     estado_atual: 'No WMS',
-    tipo: 'orcamento',
+    tipo: 'orcamento' as 'orcamento' | 'pedido',
   })
   const [loading, setLoading] = useState(false)
 

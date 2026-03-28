@@ -73,8 +73,8 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
         })
 
         if (validacao.valid && validacao.cleaned.nome) {
-          const email = validacao.cleaned.email?.toLowerCase()
-          const doc = validacao.cleaned.cpf_cnpj?.replace(/\D/g, '')
+          const email = (validacao.cleaned.email as string | undefined)?.toLowerCase()
+          const doc = (validacao.cleaned.cpf_cnpj as string | undefined)?.replace(/\D/g, '')
 
           if ((email && emailsExistentes.has(email)) || (doc && docsExistentes.has(doc))) {
             pulados++
