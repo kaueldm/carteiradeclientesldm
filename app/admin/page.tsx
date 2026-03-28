@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { MessageSquare, LogOut, Bell, Filter, ShieldCheck, ArrowLeft } from 'lucide-react'
+import { MessageSquare, LogOut, Filter, ShieldCheck, ArrowLeft, Send } from 'lucide-react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -33,16 +33,6 @@ interface ClienteAdmin {
   vendedor_nome?: string
 }
 
-/*
-interface MetaAdmin {
-  id: string
-  user_id: string
-  mes_ano: string
-  meta_venda: number
-  meta_garantia: number
-}
-*/
-
 // Lista de vendedores permitidos
 const VENDEDORES_PERMITIDOS = [
   { email: 'ana@ldm.com', nome: 'Ana Carolina' },
@@ -58,9 +48,7 @@ export default function AdminPage() {
   const router = useRouter()
   const [vendedores, setVendedores] = useState<VendedorMetricas[]>([])
   const [clientes, setClientes] = useState<ClienteAdmin[]>([])
-  // const [metas, setMetas] = useState<MetaAdmin[]>([])
   const [loading, setLoading] = useState(true)
-  // const [adminEmail, setAdminEmail] = useState('')
 
   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos')
   const [notificacaoTitulo, setNotificacaoTitulo] = useState('')
@@ -73,8 +61,6 @@ export default function AdminPage() {
       router.push('/login')
       return
     }
-
-    // setAdminEmail(data.session.user.email || '')
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -108,15 +94,6 @@ export default function AdminPage() {
 
       if (clientesError) throw clientesError
 
-      /*
-      // Carregar todas as metas
-      const { data: todasMetas, error: metasError } = await supabase
-        .from('metas')
-        .select('*')
-
-      if (metasError) throw metasError
-      */
-
       // Criar mapa de vendedores para referência rápida
       const vendedoresMap = new Map((usuarios || []).map(u => [u.id, u]))
 
@@ -127,7 +104,6 @@ export default function AdminPage() {
       }))
 
       setClientes(clientesEnriquecidos)
-      // setMetas(todasMetas || [])
 
       // Calcular métricas para cada vendedor
       const metricas: VendedorMetricas[] = (usuarios || []).map((user) => {
@@ -236,10 +212,12 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setAbrirNotif(!abrirNotif)}
-              className={`p-2.5 rounded-xl transition-all ${abrirNotif ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-              title="Enviar Notificação"
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium text-sm ${
+                abrirNotif ? 'bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
             >
-              <Bell className="w-5 h-5" />
+              <Send className="w-4 h-4" />
+              Enviar mensagem aos vendedores
             </button>
             <button
               onClick={handleLogout}
@@ -285,94 +263,110 @@ export default function AdminPage() {
                 </div>
                 <div className="flex justify-end gap-3">
                   <button onClick={() => setAbrirNotif(false)} className="px-6 py-2.5 text-slate-400 hover:text-white font-medium">Cancelar</button>
-                  <button onClick={enviarNotificacao} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20">Enviar para Todos</button>
+                  <button onClick={enviarNotificacao} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all">Enviar Agora</button>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Filtros e KPIs */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-full md:w-auto">
-            <div className="p-2 text-slate-500"><Filter className="w-4 h-4" /></div>
-            <select
-              value={filtroVendedor}
-              onChange={(e) => setFiltroVendedor(e.target.value)}
-              className="bg-transparent text-white border-none focus:ring-0 text-sm font-medium pr-8 cursor-pointer w-full"
-            >
-              <option value="todos" className="bg-slate-900">Todos os Vendedores</option>
-              {vendedores.map(v => (
-                <option key={v.id} value={v.id} className="bg-slate-900">{v.nome}</option>
-              ))}
-            </select>
+        {/* Resumo Global */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+            <p className="text-sm text-slate-400 mb-1">Total de Vendas (Geral)</p>
+            <h2 className="text-3xl font-bold text-emerald-400">
+              R$ {totalVendasGlobal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+            </h2>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+            <p className="text-sm text-slate-400 mb-1">Total em Garantias</p>
+            <h2 className="text-3xl font-bold text-blue-400">
+              R$ {totalGarantiasGlobal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+            </h2>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+            <p className="text-sm text-slate-400 mb-1">Taxa Média de Conversão</p>
+            <h2 className="text-3xl font-bold text-purple-400">
+              {vendedores.length > 0 ? Math.round(vendedores.reduce((sum, v) => sum + v.taxaConversao, 0) / vendedores.length) : 0}%
+            </h2>
+          </div>
+        </div>
+
+        {/* Filtro e Gráfico */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <BarChart className="w-5 h-5 text-blue-400" />
+              Desempenho por Vendedor
+            </h2>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <select
+                value={filtroVendedor}
+                onChange={(e) => setFiltroVendedor(e.target.value)}
+                className="flex-1 md:w-64 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:border-blue-500 outline-none"
+              >
+                <option value="todos">Todos os Vendedores</option>
+                {vendedores.map(v => (
+                  <option key={v.id} value={v.id}>{v.nome}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-auto">
-            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
-              <p className="text-[10px] text-slate-500 uppercase font-bold">Clientes</p>
-              <p className="text-xl font-bold text-white">{clientesFiltrados.length}</p>
-            </div>
-            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
-              <p className="text-[10px] text-slate-500 uppercase font-bold">Vendas</p>
-              <p className="text-xl font-bold text-emerald-400">R$ {totalVendasGlobal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
-            </div>
-            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
-              <p className="text-[10px] text-slate-500 uppercase font-bold">Garantias</p>
-              <p className="text-xl font-bold text-orange-400">R$ {totalGarantiasGlobal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
-            </div>
-            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 text-center">
-              <p className="text-[10px] text-slate-500 uppercase font-bold">Conversão</p>
-              <p className="text-xl font-bold text-blue-400">
-                {Math.round(clientesFiltrados.length > 0 ? (clientesFiltrados.filter(c => c.status === 'Fechado').length / clientesFiltrados.length) * 100 : 0)}%
-              </p>
-            </div>
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dadosFiltrados}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <XAxis dataKey="nome" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val/1000}k`} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                  itemStyle={{ color: '#fff' }}
+                  formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Vendas']}
+                />
+                <Bar dataKey="valorTotal" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         {/* Tabela de Vendedores */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
           <div className="p-6 border-b border-slate-800">
-            <h3 className="text-lg font-bold text-white">Desempenho por Vendedor</h3>
+            <h2 className="text-xl font-bold text-white">Métricas Detalhadas</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left">
               <thead>
-                <tr className="bg-slate-800/50">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Vendedor</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Clientes</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Fechados</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Total Vendas</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Garantias</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Conversão</th>
+                <tr className="bg-slate-800/50 text-slate-400 text-xs uppercase font-bold">
+                  <th className="px-6 py-4">Vendedor</th>
+                  <th className="px-6 py-4">Clientes</th>
+                  <th className="px-6 py-4">Vendas</th>
+                  <th className="px-6 py-4">Conversão</th>
+                  <th className="px-6 py-4">Total Vendido</th>
+                  <th className="px-6 py-4">Garantias</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {vendedores.filter(v => filtroVendedor === 'todos' || v.id === filtroVendedor).map((v) => (
+                {dadosFiltrados.map((v) => (
                   <tr key={v.id} className="hover:bg-slate-800/30 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 font-bold text-xs">
-                          {v.nome.charAt(0)}
+                      <p className="font-bold text-white">{v.nome}</p>
+                      <p className="text-xs text-slate-500">{v.email}</p>
+                    </td>
+                    <td className="px-6 py-4 text-white">{v.totalClientes}</td>
+                    <td className="px-6 py-4 text-emerald-400 font-bold">{v.clientesFechados}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full w-16 overflow-hidden">
+                          <div className="h-full bg-purple-500" style={{ width: `${v.taxaConversao}%` }} />
                         </div>
-                        <div>
-                          <span className="font-medium text-white block">{v.nome}</span>
-                          <span className="text-xs text-slate-500">{v.email}</span>
-                        </div>
+                        <span className="text-xs text-white">{v.taxaConversao}%</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center font-medium">{v.totalClientes}</td>
-                    <td className="px-6 py-4 text-center font-medium text-emerald-400">{v.clientesFechados}</td>
-                    <td className="px-6 py-4 text-right font-bold text-white">R$ {v.valorTotal.toLocaleString('pt-BR')}</td>
-                    <td className="px-6 py-4 text-right font-bold text-orange-400">R$ {v.vendasGarantia.toLocaleString('pt-BR')}</td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-12 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-blue-500 h-full" style={{ width: `${v.taxaConversao}%` }} />
-                        </div>
-                        <span className="text-xs font-bold">{v.taxaConversao}%</span>
-                      </div>
-                    </td>
+                    <td className="px-6 py-4 text-white font-bold">R$ {v.valorTotal.toLocaleString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-blue-400 font-bold">R$ {v.vendasGarantia.toLocaleString('pt-BR')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -380,89 +374,37 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Gráfico de Vendas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h3 className="text-white font-bold mb-6">Vendas por Vendedor</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={vendedores.filter(v => v.valorTotal > 0)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis dataKey="nome" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Bar dataKey="valorTotal" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-            <h3 className="text-white font-bold mb-6">Garantias por Vendedor</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={vendedores.filter(v => v.vendasGarantia > 0)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <XAxis dataKey="nome" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Bar dataKey="vendasGarantia" fill="#f97316" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
         {/* Tabela de Clientes Recentes */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
           <div className="p-6 border-b border-slate-800">
-            <h3 className="text-lg font-bold text-white">Últimos Clientes Adicionados</h3>
+            <h2 className="text-xl font-bold text-white">Últimas Atividades</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-slate-800/50">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Cliente</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Vendedor</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Empresa</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Valor</th>
+                <tr className="bg-slate-800/50 text-slate-400 text-xs uppercase font-bold">
+                  <th className="px-6 py-4">Cliente</th>
+                  <th className="px-6 py-4">Vendedor</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
                 {clientesFiltrados.slice(0, 10).map((c) => (
                   <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 font-bold text-xs">
-                          {c.nome.charAt(0)}
-                        </div>
-                        <span className="font-medium text-white">{c.nome}</span>
-                      </div>
+                      <p className="font-bold text-white">{c.nome}</p>
+                      <p className="text-xs text-slate-500">{c.empresa || 'Sem empresa'}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-400">{c.vendedor_nome}</td>
-                    <td className="px-6 py-4 text-sm text-slate-400">{c.empresa || '-'}</td>
+                    <td className="px-6 py-4 text-slate-300">{c.vendedor_nome}</td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-lg border ${
-                        {
-                          'Novo': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                          'Em Contato': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-                          'Proposta': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-                          'Negociação': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-                          'Fechado': 'bg-green-500/20 text-green-400 border-green-500/30',
-                          'Perdido': 'bg-red-500/20 text-red-400 border-red-500/30',
-                        }[c.status] || 'bg-slate-700/30 text-slate-400 border-slate-600/30'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${c.status === 'Fechado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
                         {c.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-white">R$ {(c.valor_potencial || 0).toLocaleString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-right text-white font-medium">
+                      {c.valor_potencial ? `R$ ${c.valor_potencial.toLocaleString('pt-BR')}` : '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

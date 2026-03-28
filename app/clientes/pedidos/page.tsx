@@ -4,26 +4,17 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
-import { Cliente, StatusCliente } from '@/types'
+import { Cliente } from '@/types'
 import ClienteModal from '@/components/ClienteModal'
 import InteracaoModal from '@/components/InteracaoModal'
 import ImportarDadosModal from '@/components/ImportarDadosModal'
 import { Interacao } from '@/types'
 import {
-  Plus, Search, Filter, Edit2, Trash2, MessageSquare,
-  Phone, Building2, DollarSign, ChevronDown, X, ArrowLeft, Trash, Package
+  Plus, Search, Edit2, Trash2,
+  Phone, Building2, DollarSign, ArrowLeft, Trash, Package
 } from 'lucide-react'
 
-const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']
 const ESTADO_ATUAL_OPTIONS = ['No WMS', 'Não Entregue', 'Entregue', 'Item Virtual Enviado']
-const STATUS_COLORS: Record<StatusCliente, string> = {
-  'Novo': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  'Em Contato': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  'Proposta': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  'Negociação': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  'Fechado': 'bg-green-500/20 text-green-400 border-green-500/30',
-  'Perdido': 'bg-red-500/20 text-red-400 border-red-500/30',
-}
 
 const ESTADO_COLORS: Record<string, string> = {
   'No WMS': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -43,20 +34,7 @@ export default function PedidosPage() {
   const [clienteEdit, setClienteEdit] = useState<Cliente | null>(null)
   const [interacaoModal, setInteracaoModal] = useState<{ open: boolean; cliente: Cliente | null }>({ open: false, cliente: null })
   const [userId, setUserId] = useState('')
-  const [interacoes, setInteracoes] = useState<Record<string, Interacao[]>>({})
-
-  useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-        return
-      }
-      setUserId(session.user.id)
-      await fetchClientes(session.user.id)
-    }
-    load()
-  }, [router])
+  const [, setInteracoes] = useState<Record<string, Interacao[]>>({})
 
   const fetchClientes = useCallback(async (uid: string) => {
     setLoading(true)
@@ -69,6 +47,19 @@ export default function PedidosPage() {
     setClientes(data || [])
     setLoading(false)
   }, [])
+
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+      setUserId(session.user.id)
+      await fetchClientes(session.user.id)
+    }
+    load()
+  }, [router, fetchClientes])
 
   async function fetchInteracoes(clienteId: string) {
     const { data } = await supabase
@@ -282,6 +273,13 @@ export default function PedidosPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {cliente.valor_potencial && (
+                      <div className="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs font-bold">
+                        <DollarSign className="w-3 h-3" />
+                        {cliente.valor_potencial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </div>
+                    )}
+
                     <select
                       value={cliente.estado_atual || 'No WMS'}
                       onChange={(e) => handleUpdateEstado(cliente.id, e.target.value)}
@@ -297,7 +295,7 @@ export default function PedidosPage() {
                       className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-blue-400"
                       title="Adicionar interação"
                     >
-                      <MessageSquare className="w-4 h-4" />
+                      <Plus className="w-4 h-4" />
                     </button>
 
                     <button
@@ -305,8 +303,7 @@ export default function PedidosPage() {
                         setClienteEdit(cliente)
                         setModalOpen(true)
                       }}
-                      className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-blue-400"
-                      title="Editar"
+                      className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -314,26 +311,10 @@ export default function PedidosPage() {
                     <button
                       onClick={() => handleDelete(cliente.id)}
                       className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-red-400"
-                      title="Excluir"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
-                  {cliente.valor_potencial && (
-                    <div className="flex items-center gap-2 text-sm text-emerald-400">
-                      <DollarSign className="w-4 h-4" />
-                      Valor Venda: R$ {cliente.valor_potencial.toLocaleString('pt-BR')}
-                    </div>
-                  )}
-                  {cliente.garantia && cliente.valor_garantia && (
-                    <div className="flex items-center gap-2 text-sm text-orange-400">
-                      <DollarSign className="w-4 h-4" />
-                      Valor Garantia: R$ {cliente.valor_garantia.toLocaleString('pt-BR')}
-                    </div>
-                  )}
                 </div>
               </motion.div>
             ))}
@@ -341,32 +322,24 @@ export default function PedidosPage() {
         )}
       </div>
 
-      {/* Modais */}
       <ClienteModal
         open={modalOpen}
-        cliente={clienteEdit}
-        onClose={() => {
-          setModalOpen(false)
-          setClienteEdit(null)
-        }}
+        onClose={() => setModalOpen(false)}
         onSave={handleSaveCliente}
+        cliente={clienteEdit || undefined}
       />
 
       <InteracaoModal
         open={interacaoModal.open}
-        cliente={interacaoModal.cliente}
         onClose={() => setInteracaoModal({ open: false, cliente: null })}
         onSave={handleSaveInteracao}
+        clienteId={interacaoModal.cliente?.id || ''}
       />
 
       <ImportarDadosModal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        onImport={async () => {
-          await fetchClientes(userId)
-          setImportModalOpen(false)
-        }}
-        tipo="pedido"
+        onSuccess={() => fetchClientes(userId)}
       />
     </div>
   )

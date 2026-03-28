@@ -2,10 +2,9 @@
 
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Copy, Trash2 } from 'lucide-react'
+import { X, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Copy, Layers } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-import { StatusCliente } from '@/types'
 import { parseTextInput, validateClienteLine, parseNumericValue } from '@/lib/dataParser'
 
 interface ImportarDadosModalV2Props {
@@ -32,7 +31,7 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
   const [tab, setTab] = useState<'excel' | 'texto'>('excel')
   const [step, setStep] = useState<'input' | 'preview' | 'processing' | 'success' | 'error'>('input')
   const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState({ total: 0, imported: 0, errors: 0 })
+  const [stats, setStats] = useState({ total: 0, imported: 0, errors: 0, skipped: 0 })
   const [preview, setPreview] = useState<ClientePreview[]>([])
   const [textInput, setTextInput] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -40,14 +39,24 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
   async function processarClientes(clientes: ClientePreview[]) {
     setStep('processing')
     setError(null)
-    setStats({ total: clientes.length, imported: 0, errors: 0 })
+    setStats({ total: clientes.length, imported: 0, errors: 0, skipped: 0 })
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Sessão não encontrada')
 
+      // Buscar clientes existentes para evitar duplicidade (baseado em email ou cpf_cnpj)
+      const { data: existentes } = await supabase
+        .from('clientes')
+        .select('email, cpf_cnpj')
+        .eq('user_id', session.user.id)
+
+      const emailsExistentes = new Set(existentes?.map(c => c.email?.toLowerCase()).filter(Boolean))
+      const docsExistentes = new Set(existentes?.map(c => c.cpf_cnpj?.replace(/\D/g, '')).filter(Boolean))
+
       const clientesValidos = []
       let erros = 0
+      let pulados = 0
 
       for (const cliente of clientes) {
         const validacao = validateClienteLine({
@@ -64,6 +73,14 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
         })
 
         if (validacao.valid && validacao.cleaned.nome) {
+          const email = validacao.cleaned.email?.toLowerCase()
+          const doc = validacao.cleaned.cpf_cnpj?.replace(/\D/g, '')
+
+          if ((email && emailsExistentes.has(email)) || (doc && docsExistentes.has(doc))) {
+            pulados++
+            continue
+          }
+
           clientesValidos.push({
             user_id: session.user.id,
             ...validacao.cleaned,
@@ -75,7 +92,7 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
         }
       }
 
-      if (clientesValidos.length === 0) {
+      if (clientesValidos.length === 0 && pulados === 0) {
         throw new Error('Nenhum cliente válido para importar')
       }
 
@@ -95,12 +112,12 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
         setStats(prev => ({ ...prev, imported: importedCount }))
       }
 
-      setStats(prev => ({ ...prev, errors: erros }))
+      setStats(prev => ({ ...prev, errors: erros, skipped: pulados }))
       setStep('success')
       setTimeout(() => {
         onImport()
         onClose()
-      }, 2000)
+      }, 3000)
     } catch (err: unknown) {
       console.error('Erro ao importar:', err)
       const errorMessage = err instanceof Error ? err.message : 'Erro ao importar dados'
@@ -118,38 +135,53 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
       try {
         const bstr = evt.target?.result
         const wb = XLSX.read(bstr, { type: 'binary' })
-        const wsname = wb.SheetNames[0]
-        const ws = wb.Sheets[wsname]
-        const data = XLSX.utils.sheet_to_json(ws) as any[]
+        
+        let allClients: ClientePreview[] = []
 
-        if (data.length === 0) {
-          throw new Error('A planilha está vazia')
+        // Processar todas as abas (SheetNames)
+        wb.SheetNames.forEach(sheetName => {
+          const ws = wb.Sheets[sheetName]
+          const data = XLSX.utils.sheet_to_json(ws) as Record<string, string | number>[]
+
+          const clientesAba = data.map(row => {
+            const findValue = (keys: string[]) => {
+              const key = Object.keys(row).find(k =>
+                keys.some(search => k.toLowerCase().includes(search.toLowerCase()))
+              )
+              return key ? String(row[key]) : undefined
+            }
+
+            return {
+              nome: findValue(['nome', 'cliente', 'razao social', 'contato']) || '',
+              empresa: findValue(['empresa', 'fantasia', 'loja']),
+              telefone: findValue(['telefone', 'celular', 'fone', 'whatsapp']),
+              email: findValue(['email', 'e-mail']),
+              cpf_cnpj: findValue(['cpf', 'cnpj', 'documento']),
+              valor_potencial: parseNumericValue(findValue(['valor', 'total', 'potencial', 'preço'])),
+              status: findValue(['status', 'situação']) || 'Novo',
+              estado_atual: findValue(['estado', 'estado_atual', 'entrega']) || 'No WMS',
+              tipo: tipo,
+              garantia: findValue(['garantia', 'comprou_garantia'])?.toLowerCase().includes('sim') || false,
+            }
+          }).filter(c => c.nome)
+
+          allClients = [...allClients, ...clientesAba]
+        })
+
+        if (allClients.length === 0) {
+          throw new Error('Nenhum dado encontrado nas abas da planilha')
         }
 
-        // Mapear dados do Excel
-        const clientesPreview = data.map(row => {
-          const findValue = (keys: string[]) => {
-            const key = Object.keys(row).find(k =>
-              keys.some(search => k.toLowerCase().includes(search.toLowerCase()))
-            )
-            return key ? String(row[key]) : undefined
-          }
+        // Remover duplicatas dentro da própria planilha (baseado em email ou documento)
+        const uniqueClients = allClients.filter((c, index, self) => 
+          index === self.findIndex((t) => (
+            (t.email && t.email === c.email) || 
+            (t.cpf_cnpj && t.cpf_cnpj === c.cpf_cnpj) ||
+            (t.nome === c.nome && t.telefone === c.telefone)
+          ))
+        )
 
-          return {
-            nome: findValue(['nome', 'cliente', 'razao social', 'contato']) || '',
-            empresa: findValue(['empresa', 'fantasia', 'loja']),
-            telefone: findValue(['telefone', 'celular', 'fone', 'whatsapp']),
-            email: findValue(['email', 'e-mail']),
-            cpf_cnpj: findValue(['cpf', 'cnpj', 'documento']),
-            valor_potencial: parseNumericValue(findValue(['valor', 'total', 'potencial', 'preço'])),
-            status: findValue(['status', 'situação']) || 'Novo',
-            estado_atual: findValue(['estado', 'estado_atual', 'entrega']) || 'No WMS',
-            tipo: tipo,
-            garantia: findValue(['garantia', 'comprou_garantia'])?.toLowerCase().includes('sim') || false,
-          }
-        }).filter(c => c.nome)
-
-        setPreview(clientesPreview)
+        setPreview(uniqueClients)
         setStep('preview')
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Erro ao processar Excel'
@@ -231,25 +263,25 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                   <div className="flex gap-2 bg-slate-900 p-1 rounded-lg">
                     <button
                       onClick={() => setTab('excel')}
-                      className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                      className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                         tab === 'excel'
                           ? 'bg-blue-600 text-white'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      <FileSpreadsheet className="w-4 h-4 inline mr-2" />
-                      Excel
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Excel (Múltiplas Abas)
                     </button>
                     <button
                       onClick={() => setTab('texto')}
-                      className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+                      className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                         tab === 'texto'
                           ? 'bg-blue-600 text-white'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      <Copy className="w-4 h-4 inline mr-2" />
-                      Texto
+                      <Copy className="w-4 h-4" />
+                      Texto Bruto
                     </button>
                   </div>
 
@@ -262,7 +294,7 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                       >
                         <Upload className="w-12 h-12 text-slate-500 mx-auto mb-3" />
                         <p className="text-white font-medium">Clique para selecionar ou arraste um arquivo</p>
-                        <p className="text-sm text-slate-400 mt-1">Suporta .xlsx, .xls, .csv</p>
+                        <p className="text-sm text-slate-400 mt-1">Suporta .xlsx, .xls, .csv com múltiplas abas</p>
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -271,9 +303,12 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                           className="hidden"
                         />
                       </div>
-                      <p className="text-xs text-slate-500">
-                        💡 Dica: Use colunas com nomes como "Nome", "Email", "Telefone", "Empresa", "CPF/CNPJ", "Valor", "Status"
-                      </p>
+                      <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <Layers className="w-4 h-4 text-blue-400 mt-0.5" />
+                        <p className="text-xs text-slate-300">
+                          <strong>Performance Divina:</strong> O sistema analisará automaticamente todas as abas da sua planilha e evitará a importação de clientes duplicados que já existam no seu banco de dados.
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -283,7 +318,7 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                       <textarea
                         value={textInput}
                         onChange={(e) => setTextInput(e.target.value)}
-                        placeholder="Cole aqui o texto com os clientes (um por linha)&#10;Formato: Nome, Email, Telefone, Empresa&#10;Exemplo:&#10;João Silva, joao@email.com, 11987654321, Empresa XYZ&#10;Maria Santos, maria@email.com, 11912345678, Empresa ABC"
+                        placeholder="Cole aqui o texto com os clientes (um por linha). Exemplo:&#10;João Silva, joao@email.com, 11987654321, Empresa XYZ&#10;Maria Santos, maria@email.com, 11912345678, Empresa ABC"
                         className="w-full h-48 bg-slate-700 border border-slate-600 rounded-xl p-4 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
                       />
                       <button
@@ -292,9 +327,6 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                       >
                         Processar Texto
                       </button>
-                      <p className="text-xs text-slate-500">
-                        💡 Dica: Separe os dados por vírgula, ponto-e-vírgula ou tab. O sistema detectará automaticamente emails, telefones e CPF/CNPJ.
-                      </p>
                     </div>
                   )}
                 </>
@@ -304,7 +336,7 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                 <div className="space-y-4">
                   <div className="bg-slate-900 p-4 rounded-lg">
                     <p className="text-sm text-slate-300">
-                      <span className="font-bold text-white">{preview.length}</span> cliente(s) encontrado(s)
+                      <span className="font-bold text-white">{preview.length}</span> cliente(s) único(s) encontrado(s) na planilha.
                     </p>
                   </div>
 
@@ -334,7 +366,7 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                       onClick={() => processarClientes(preview)}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-all font-medium"
                     >
-                      Importar
+                      Confirmar Importação
                     </button>
                   </div>
                 </div>
@@ -345,7 +377,7 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                   <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
                   <p className="text-white font-medium">Importando...</p>
                   <p className="text-sm text-slate-400 mt-2">
-                    {stats.imported} de {stats.total} clientes
+                    {stats.imported} de {stats.total} processados
                   </p>
                 </div>
               )}
@@ -354,10 +386,11 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                 <div className="text-center py-8">
                   <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
                   <p className="text-white font-medium">Importação concluída!</p>
-                  <p className="text-sm text-slate-400 mt-2">
-                    {stats.imported} cliente(s) importado(s)
-                    {stats.errors > 0 && ` (${stats.errors} com erro)`}
-                  </p>
+                  <div className="text-sm text-slate-400 mt-2 space-y-1">
+                    <p>✅ {stats.imported} novos clientes adicionados</p>
+                    {stats.skipped > 0 && <p>⏭️ {stats.skipped} duplicados ignorados</p>}
+                    {stats.errors > 0 && <p>❌ {stats.errors} com erro de formato</p>}
+                  </div>
                 </div>
               )}
 
@@ -370,7 +403,6 @@ export default function ImportarDadosModalV2({ open, onClose, onImport, tipo = '
                     onClick={() => {
                       setStep('input')
                       setError(null)
-                      setPreview([])
                     }}
                     className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all"
                   >

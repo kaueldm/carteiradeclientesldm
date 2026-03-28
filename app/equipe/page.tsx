@@ -12,37 +12,15 @@ interface Vendedor {
   email: string
   role: string
   gestor_id?: string
-  totalClientes?: number
-  clientesFechados?: number
-  valorTotal?: number
+  totalClientes: number
+  clientesFechados: number
+  valorTotal: number
 }
 
 export default function EquipePage() {
   const router = useRouter()
   const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState<string>('')
-
-  useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-        return
-      }
-
-      // Verificar role do usuário
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
-
-      setUserRole(profile?.role || 'vendedor')
-      await fetchEquipe()
-    }
-    load()
-  }, [router])
 
   const fetchEquipe = useCallback(async () => {
     setLoading(true)
@@ -82,6 +60,18 @@ export default function EquipePage() {
     }
     setLoading(false)
   }, [])
+
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+      await fetchEquipe()
+    }
+    load()
+  }, [router, fetchEquipe])
 
   const admin = vendedores.find(v => v.role === 'admin')
   const vendedoresNormais = vendedores.filter(v => v.role !== 'admin')
@@ -270,12 +260,12 @@ export default function EquipePage() {
             <div className="bg-slate-800/50 rounded-lg p-4 text-center">
               <p className="text-xs text-slate-500 uppercase font-bold">Taxa Média</p>
               <p className="text-2xl font-bold text-blue-400 mt-2">
-                {Math.round(
+                {vendedores.filter(v => v.totalClientes > 0).length > 0 ? Math.round(
                   vendedores.reduce((sum, v) => {
                     if (v.totalClientes === 0) return sum
                     return sum + (v.clientesFechados / v.totalClientes)
                   }, 0) / vendedores.filter(v => v.totalClientes > 0).length * 100
-                )}%
+                ) : 0}%
               </p>
             </div>
           </div>

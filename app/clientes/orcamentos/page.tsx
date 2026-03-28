@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 import { Cliente, StatusCliente } from '@/types'
 import ClienteModal from '@/components/ClienteModal'
@@ -10,8 +10,8 @@ import InteracaoModal from '@/components/InteracaoModal'
 import ImportarDadosModal from '@/components/ImportarDadosModal'
 import { Interacao } from '@/types'
 import {
-  Plus, Search, Filter, Edit2, Trash2, MessageSquare,
-  Phone, Building2, DollarSign, ChevronDown, X, ArrowLeft, Trash
+  Plus, Search, Edit2, Trash2,
+  Phone, Building2, ArrowLeft, Trash
 } from 'lucide-react'
 
 const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']
@@ -35,21 +35,7 @@ export default function OrcamentosPage() {
   const [clienteEdit, setClienteEdit] = useState<Cliente | null>(null)
   const [interacaoModal, setInteracaoModal] = useState<{ open: boolean; cliente: Cliente | null }>({ open: false, cliente: null })
   const [userId, setUserId] = useState('')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [interacoes, setInteracoes] = useState<Record<string, Interacao[]>>({})
-
-  useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-        return
-      }
-      setUserId(session.user.id)
-      await fetchClientes(session.user.id)
-    }
-    load()
-  }, [router])
+  const [, setInteracoes] = useState<Record<string, Interacao[]>>({})
 
   const fetchClientes = useCallback(async (uid: string) => {
     setLoading(true)
@@ -62,6 +48,19 @@ export default function OrcamentosPage() {
     setClientes(data || [])
     setLoading(false)
   }, [])
+
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+      setUserId(session.user.id)
+      await fetchClientes(session.user.id)
+    }
+    load()
+  }, [router, fetchClientes])
 
   async function fetchInteracoes(clienteId: string) {
     const { data } = await supabase
@@ -281,7 +280,7 @@ export default function OrcamentosPage() {
                       className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-blue-400"
                       title="Adicionar interação"
                     >
-                      <MessageSquare className="w-4 h-4" />
+                      <Plus className="w-4 h-4" />
                     </button>
 
                     <button
@@ -289,8 +288,7 @@ export default function OrcamentosPage() {
                         setClienteEdit(cliente)
                         setModalOpen(true)
                       }}
-                      className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-blue-400"
-                      title="Editar"
+                      className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -298,51 +296,35 @@ export default function OrcamentosPage() {
                     <button
                       onClick={() => handleDelete(cliente.id)}
                       className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-red-400"
-                      title="Excluir"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-
-                {cliente.valor_potencial && (
-                  <div className="mt-3 pt-3 border-t border-slate-800 flex items-center gap-2 text-sm text-emerald-400">
-                    <DollarSign className="w-4 h-4" />
-                    R$ {cliente.valor_potencial.toLocaleString('pt-BR')}
-                  </div>
-                )}
               </motion.div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Modais */}
       <ClienteModal
         open={modalOpen}
-        cliente={clienteEdit}
-        onClose={() => {
-          setModalOpen(false)
-          setClienteEdit(null)
-        }}
+        onClose={() => setModalOpen(false)}
         onSave={handleSaveCliente}
+        cliente={clienteEdit || undefined}
       />
 
       <InteracaoModal
         open={interacaoModal.open}
-        cliente={interacaoModal.cliente}
         onClose={() => setInteracaoModal({ open: false, cliente: null })}
         onSave={handleSaveInteracao}
+        clienteId={interacaoModal.cliente?.id || ''}
       />
 
       <ImportarDadosModal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        onImport={async () => {
-          await fetchClientes(userId)
-          setImportModalOpen(false)
-        }}
-        tipo="orcamento"
+        onSuccess={() => fetchClientes(userId)}
       />
     </div>
   )

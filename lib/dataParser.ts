@@ -203,10 +203,10 @@ export function parseNumericValue(value: string | number | undefined): number {
 /**
  * Valida uma linha inteira antes de inserir
  */
-export function validateClienteLine(line: Record<string, any>): {
+export function validateClienteLine(line: Record<string, string | number | boolean | undefined>): {
   valid: boolean
   errors: string[]
-  cleaned: Record<string, any>
+  cleaned: Record<string, string | number | boolean | undefined>
 } {
   const errors: string[] = []
   const cleaned = { ...line }
@@ -258,11 +258,11 @@ export function validateClienteLine(line: Record<string, any>): {
   
   // Validar valores numéricos
   if (cleaned.valor_potencial) {
-    cleaned.valor_potencial = parseNumericValue(cleaned.valor_potencial)
+    cleaned.valor_potencial = parseNumericValue(cleaned.valor_potencial as string | number)
   }
   
   if (cleaned.valor_garantia) {
-    cleaned.valor_garantia = parseNumericValue(cleaned.valor_garantia)
+    cleaned.valor_garantia = parseNumericValue(cleaned.valor_garantia as string | number)
   }
   
   return {
