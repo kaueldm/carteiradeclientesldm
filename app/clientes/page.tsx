@@ -11,7 +11,7 @@ import DeleteConfirmationModal from '@/components/DeleteConfirmationModal'
 import { Interacao } from '@/types'
 import {
   Plus, Search, Filter, Edit2, Trash2, MessageSquare,
-  Phone, Building2, DollarSign, ChevronDown, X, Table, FileText, Trash
+  Phone, Building2, DollarSign, ChevronDown, X, Table, FileText, Trash, ShieldCheck, Hash
 } from 'lucide-react'
 
 const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']

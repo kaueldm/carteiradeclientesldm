@@ -375,39 +375,61 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Tabela de Clientes Recentes */}
+        {/* Tabela de Clientes Detalhada */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
           <div className="p-6 border-b border-slate-800">
-            <h2 className="text-xl font-bold text-white">Últimas Atividades</h2>
+            <h2 className="text-xl font-bold text-white">
+              {filtroVendedor === 'todos' ? 'Todos os Clientes' : `Clientes - ${vendedores.find(v => v.id === filtroVendedor)?.nome}`}
+            </h2>
+            <p className="text-sm text-slate-400 mt-1">Total: {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="bg-slate-800/50 text-slate-400 text-xs uppercase font-bold">
                   <th className="px-6 py-4">Cliente</th>
+                  <th className="px-6 py-4">Empresa</th>
                   <th className="px-6 py-4">Vendedor</th>
+                  <th className="px-6 py-4">Telefone</th>
+                  <th className="px-6 py-4">Email</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {clientesFiltrados.slice(0, 10).map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-white">{c.nome}</p>
-                      <p className="text-xs text-slate-500">{c.empresa || 'Sem empresa'}</p>
-                    </td>
-                    <td className="px-6 py-4 text-slate-300">{c.vendedor_nome}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${c.status === 'Fechado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right text-white font-medium">
-                      {c.valor_potencial ? `R$ ${c.valor_potencial.toLocaleString('pt-BR')}` : '-'}
+                {clientesFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                      Nenhum cliente encontrado
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  clientesFiltrados.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-white">{c.nome}</p>
+                      </td>
+                      <td className="px-6 py-4 text-slate-300">{c.empresa || '-'}</td>
+                      <td className="px-6 py-4 text-slate-300">{c.vendedor_nome}</td>
+                      <td className="px-6 py-4 text-slate-300">{c.telefone || '-'}</td>
+                      <td className="px-6 py-4 text-slate-300 truncate">{c.email || '-'}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                          c.status === 'Fechado' ? 'bg-emerald-500/20 text-emerald-400' :
+                          c.status === 'Negociação' ? 'bg-orange-500/20 text-orange-400' :
+                          c.status === 'Proposta' ? 'bg-purple-500/20 text-purple-400' :
+                          c.status === 'Em Contato' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-slate-800 text-slate-400'
+                        }`}>
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right text-white font-medium">
+                        {c.valor_potencial ? `R$ ${c.valor_potencial.toLocaleString('pt-BR')}` : '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
