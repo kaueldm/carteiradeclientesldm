@@ -75,32 +75,53 @@ export default function LoginPage() {
         {/* Card principal */}
         <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
           {/* Personalização */}
-          <p className="text-center text-ldm-orange-light text-xs font-bold mb-2 uppercase tracking-wider">
-            Desenvolvido por Kauê Apezato - Loja Praia Grande
-          </p>
+          <motion.a
+            href="https://www.apezatomarketing.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="text-center text-ldm-orange-light text-xs font-bold mb-2 uppercase tracking-wider hover:text-ldm-orange transition-colors cursor-pointer flex items-center justify-center gap-2 group"
+          >
+            <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M13 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V11M21 3V11M21 3L13 11" stroke="currentColor" strokeWidth="2" fill="none"/>
+            </svg>
+            Desenvolvido por Apezato Marketing
+          </motion.a>
 
-          {/* Logo */}
+          {/* Logo - Carteira Animada */}
           <motion.div
             className="flex justify-center mb-8"
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 3, repeat: Infinity }}
           >
-            <div className="relative w-32 h-32">
-              <Image
-                src="/assets/logo-login.png"
-                alt="Loja do Mecânico"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
+            <svg className="w-32 h-32 text-ldm-orange" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <style>{`
+                  @keyframes walletBounce { 0%, 100% { transform: rotateZ(0deg); } 50% { transform: rotateZ(-5deg); } }
+                  @keyframes coinFloat { 0%, 100% { transform: translateY(-10px); opacity: 0.5; } 50% { transform: translateY(10px); opacity: 1; } }
+                  @keyframes coinFloat2 { 0%, 100% { transform: translateY(10px); opacity: 0.5; } 50% { transform: translateY(-10px); opacity: 1; } }
+                  .wallet-main { animation: walletBounce 2s infinite; }
+                  .coin-1 { animation: coinFloat 2s infinite; }
+                  .coin-2 { animation: coinFloat2 2.5s infinite 0.3s; }
+                `}</style>
+              </defs>
+              <g className="wallet-main">
+                <rect x="20" y="40" width="160" height="100" rx="12" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="2"/>
+                <path d="M 40 60 L 160 60" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="150" cy="100" r="8" fill="currentColor" opacity="0.3"/>
+                <circle cx="150" cy="100" r="6" fill="currentColor"/>
+              </g>
+              <circle cx="80" cy="80" r="6" fill="currentColor" className="coin-1"/>
+              <circle cx="110" cy="90" r="5" fill="currentColor" className="coin-2"/>
+            </svg>
           </motion.div>
 
           {/* Título */}
           <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-ldm-orange via-ldm-orange-light to-ldm-orange bg-clip-text text-transparent">
-            CRM LDM
+            CRM - Individual
           </h1>
-          <p className="text-center text-gray-400 mb-8 text-sm">Carteira de Clientes - Loja do Mecânico</p>
+          <p className="text-center text-gray-400 mb-8 text-sm">Carteira de Clientes Individual</p>
 
           {/* Mensagem de boas-vindas */}
           {mensagem ? (
@@ -193,9 +214,15 @@ export default function LoginPage() {
           </form>
 
           {/* Footer */}
-          <p className="text-center text-gray-500 text-xs mt-6">
-            © 2024 Loja do Mecânico. Todos os direitos reservados.
-          </p>
+          <motion.a
+            href="https://www.apezatomarketing.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.02 }}
+            className="text-center text-gray-500 text-xs mt-6 hover:text-ldm-orange transition-colors cursor-pointer inline-block w-full"
+          >
+            © 2024 Apezato Marketing. Todos os direitos reservados.
+          </motion.a>
         </div>
       </motion.div>
     </div>

@@ -114,8 +114,12 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className={`flex items-center gap-3 p-4 border-b border-slate-700/50 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="flex-shrink-0 w-9 h-9 bg-blue-500/20 border border-blue-500/30 rounded-xl flex items-center justify-center">
-          <Wrench className="w-5 h-5 text-blue-400" />
+        <div className="flex-shrink-0 w-9 h-9 bg-blue-500/20 border border-blue-500/30 rounded-xl flex items-center justify-center animate-pulse">
+          <svg className="w-5 h-5 text-blue-400 animate-bounce" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 6C3 4.89543 3.89543 4 5 4H19C20.1046 4 21 4.89543 21 6V18C21 19.1046 20.1046 20 19 20H5C3.89543 20 3 19.1046 3 18V6Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3 10H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="17" cy="15" r="1.5" fill="currentColor"/>
+          </svg>
         </div>
         <AnimatePresence>
           {!collapsed && (
@@ -125,8 +129,8 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
               exit={{ opacity: 0, width: 0 }}
               className="overflow-hidden"
             >
-              <p className="text-white font-bold text-sm whitespace-nowrap">Loja do Mecânico</p>
-              <p className="text-slate-400 text-xs whitespace-nowrap">CRM</p>
+              <p className="text-white font-bold text-sm whitespace-nowrap">Carteira de Clientes</p>
+              <p className="text-slate-400 text-xs whitespace-nowrap">Individual</p>
             </motion.div>
           )}
         </AnimatePresence>

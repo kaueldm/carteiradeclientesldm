@@ -171,10 +171,19 @@ export default function AdminPage() {
     router.push('/login')
   }
 
-  const dadosFiltrados = filtroVendedor === 'todos' ? vendedores : vendedores.filter(v => v.id === filtroVendedor)
+  // Filtrar dados com validação
+  const dadosFiltrados = filtroVendedor === 'todos' 
+    ? vendedores 
+    : vendedores.filter(v => v.id === filtroVendedor)
+  
   const clientesFiltrados = filtroVendedor === 'todos' 
     ? clientes 
     : clientes.filter(c => c.user_id === filtroVendedor)
+  
+  // Validar se o filtro selecionado existe
+  const vendedorSelecionado = filtroVendedor !== 'todos' 
+    ? vendedores.find(v => v.id === filtroVendedor)
+    : null
 
   const totalVendasGlobal = dadosFiltrados.reduce((sum, v) => sum + v.valorTotal, 0)
   const totalGarantiasGlobal = dadosFiltrados.reduce((sum, v) => sum + v.vendasGarantia, 0)
@@ -304,11 +313,13 @@ export default function AdminPage() {
               <select
                 value={filtroVendedor}
                 onChange={(e) => setFiltroVendedor(e.target.value)}
-                className="flex-1 md:w-64 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:border-blue-500 outline-none"
+                className="flex-1 md:w-64 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:border-blue-500 outline-none hover:border-blue-400 transition-colors"
               >
-                <option value="todos">Todos os Vendedores</option>
+                <option value="todos">Todos os Vendedores ({vendedores.length})</option>
                 {vendedores.map(v => (
-                  <option key={v.id} value={v.id}>{v.nome}</option>
+                  <option key={v.id} value={v.id}>
+                    {v.nome} ({v.totalClientes} clientes)
+                  </option>
                 ))}
               </select>
             </div>
@@ -379,9 +390,16 @@ export default function AdminPage() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
           <div className="p-6 border-b border-slate-800">
             <h2 className="text-xl font-bold text-white">
-              {filtroVendedor === 'todos' ? 'Todos os Clientes' : `Clientes - ${vendedores.find(v => v.id === filtroVendedor)?.nome}`}
+              {filtroVendedor === 'todos' ? 'Todos os Clientes' : `Clientes - ${vendedorSelecionado?.nome || 'Desconhecido'}`}
             </h2>
-            <p className="text-sm text-slate-400 mt-1">Total: {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-slate-400 mt-1">
+              Total: {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''}
+              {filtroVendedor !== 'todos' && vendedorSelecionado && (
+                <span className="ml-4 text-blue-400">
+                  • Vendedor: {vendedorSelecionado.nome} ({vendedorSelecionado.email})
+                </span>
+              )}
+            </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
