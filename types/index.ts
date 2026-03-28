@@ -14,8 +14,8 @@ export interface Cliente {
   telefone?: string
   email?: string
   status: StatusCliente
-  tipo?: 'orcamento' | 'pedido'
-  estado_atual?: string
+  tipo: 'orcamento' | 'pedido'
+  estado_atual: string
   garantia?: boolean
   valor_garantia?: number
   valor_potencial?: number
