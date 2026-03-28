@@ -7,10 +7,11 @@ import { Cliente, StatusCliente, STATUS_COLORS } from '@/types'
 import ClienteModal from '@/components/ClienteModal'
 import InteracaoModal from '@/components/InteracaoModal'
 import ImportarDadosModalV2 from '@/components/ImportarDadosModalV2'
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal'
 import { Interacao } from '@/types'
 import {
   Plus, Search, Filter, Edit2, Trash2, MessageSquare,
-  Phone, Building2, DollarSign, ChevronDown, X, Table, FileText, Hash, ShieldCheck
+  Phone, Building2, DollarSign, ChevronDown, X, Table, FileText, Trash
 } from 'lucide-react'
 
 const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']
@@ -27,6 +28,8 @@ export default function ClientesPage() {
   const [userId, setUserId] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [interacoes, setInteracoes] = useState<Record<string, Interacao[]>>({})
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -103,6 +106,28 @@ export default function ClientesPage() {
     if (!confirm('Tem certeza que deseja excluir este cliente?')) return
     await supabase.from('clientes').delete().eq('id', id)
     setClientes(prev => prev.filter(c => c.id !== id))
+  }
+
+  async function handleDeleteAll() {
+    setDeleteConfirmOpen(true)
+  }
+
+  async function confirmDeleteAll() {
+    setIsDeleting(true)
+    const { error } = await supabase
+      .from('clientes')
+      .delete()
+      .neq('id', '') // Deleta todos os clientes
+    
+    setIsDeleting(false)
+    setDeleteConfirmOpen(false)
+
+    if (error) {
+      alert('Erro ao excluir todos os clientes')
+    } else {
+      alert('Todos os clientes foram excluídos')
+      await fetchClientes(userId)
+    }
   }
 
   async function handleUpdateStatus(id: string, status: StatusCliente) {
@@ -216,7 +241,25 @@ export default function ClientesPage() {
             {STATUS_OPTIONS.map(s => <option key={s} value={s} className="bg-slate-800">{s}</option>)}
           </select>
         </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleDeleteAll}
+          className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 px-4 py-2.5 rounded-xl font-medium text-sm transition-all"
+        >
+          <Trash className="w-4 h-4" />
+          Excluir Todos
+        </motion.button>
       </motion.div>
+
+      <DeleteConfirmationModal
+        open={deleteConfirmOpen}
+        title="Excluir Todos os Clientes?"
+        message="Tem certeza que deseja excluir TODOS os clientes? Esta ação não pode ser desfeita."
+        onConfirm={confirmDeleteAll}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        isLoading={isDeleting}
+      />
 
       {/* Lista de clientes */}
       {loading ? (

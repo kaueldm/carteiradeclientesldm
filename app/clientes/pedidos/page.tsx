@@ -14,6 +14,7 @@ import {
   Phone, Building2, ArrowLeft, Trash, ShoppingBag, DollarSign
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal'
 
 const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']
 const STATUS_COLORS: Record<StatusCliente, string> = {
@@ -45,6 +46,8 @@ export default function PedidosPage() {
   const [clienteEdit, setClienteEdit] = useState<Cliente | null>(null)
   const [interacaoModal, setInteracaoModal] = useState<{ open: boolean; cliente: Cliente | null }>({ open: false, cliente: null })
   const [userId, setUserId] = useState('')
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchClientes = useCallback(async () => {
     setLoading(true)
@@ -119,12 +122,19 @@ export default function PedidosPage() {
   }
 
   async function handleDeleteAll() {
-    if (!confirm('⚠️ Tem certeza que deseja excluir TODOS os pedidos?')) return
+    setDeleteConfirmOpen(true)
+  }
+
+  async function confirmDeleteAll() {
+    setIsDeleting(true)
     const { error } = await supabase
       .from('clientes')
       .delete()
       .eq('tipo', 'pedido')
     
+    setIsDeleting(false)
+    setDeleteConfirmOpen(false)
+
     if (error) {
       toast.error('Erro ao excluir todos os pedidos')
     } else {
@@ -265,6 +275,15 @@ export default function PedidosPage() {
             Excluir Todos
           </button>
         </div>
+
+        <DeleteConfirmationModal
+          open={deleteConfirmOpen}
+          title="Excluir Todos os Pedidos?"
+          message="Tem certeza que deseja excluir TODOS os pedidos? Esta ação não pode ser desfeita."
+          onConfirm={confirmDeleteAll}
+          onCancel={() => setDeleteConfirmOpen(false)}
+          isLoading={isDeleting}
+        />
 
         {clientesFiltrados.length === 0 ? (
           <div className="text-center py-12">
