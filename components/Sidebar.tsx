@@ -20,11 +20,23 @@ import {
   Bell,
   Target,
   ShieldAlert,
+  ChevronDown,
+  FileText,
+  ShoppingBag,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/clientes', label: 'Clientes', icon: Users },
+  { 
+    href: '/clientes', 
+    label: 'Clientes', 
+    icon: Users,
+    subItems: [
+      { href: '/clientes', label: 'Todos Clientes', icon: Users },
+      { href: '/clientes/orcamentos', label: 'Orçamentos', icon: FileText },
+      { href: '/clientes/pedidos', label: 'Pedidos', icon: ShoppingBag },
+    ]
+  },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/metas', label: 'Metas do Mês', icon: Target },
   { href: '/notificacoes', label: 'Notificações', icon: Bell },
@@ -44,13 +56,13 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [clientesOpen, setClientesOpen] = useState(false)
 
   useEffect(() => {
     async function carregarDados() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      // Verificar se é admin
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
@@ -71,7 +83,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
 
     carregarDados()
 
-    // Subscribe para atualizações em tempo real
     const channel = supabase
       .channel('notificacoes')
       .on(
@@ -88,6 +99,13 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
     }
   }, [])
 
+  // Manter o dropdown de clientes aberto se estiver em uma subrota de clientes
+  useEffect(() => {
+    if (pathname.startsWith('/clientes')) {
+      setClientesOpen(true)
+    }
+  }, [pathname])
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -95,7 +113,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
       <div className={`flex items-center gap-3 p-4 border-b border-slate-700/50 ${collapsed ? 'justify-center' : ''}`}>
         <div className="flex-shrink-0 w-9 h-9 bg-blue-500/20 border border-blue-500/30 rounded-xl flex items-center justify-center">
           <Wrench className="w-5 h-5 text-blue-400" />
@@ -115,12 +132,63 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
         </AnimatePresence>
       </div>
 
-      {/* Navegação */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
           const temNotificacoes = item.href === '/notificacoes' && notificacoesNaoLidas > 0
+          const hasSubItems = !!item.subItems
+
+          if (hasSubItems) {
+            return (
+              <div key={item.href} className="space-y-1">
+                <div
+                  onClick={() => !collapsed && setClientesOpen(!clientesOpen)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 cursor-pointer relative ${
+                    isActive
+                      ? 'bg-blue-600/20 border border-blue-500/30 text-blue-400'
+                      : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'
+                  } ${collapsed ? 'justify-center' : ''}`}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <>
+                      <span className="text-sm font-medium flex-1">{item.label}</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${clientesOpen ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
+                </div>
+                
+                <AnimatePresence>
+                  {clientesOpen && !collapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="pl-9 space-y-1 overflow-hidden"
+                    >
+                      {item.subItems?.map((sub) => {
+                        const SubIcon = sub.icon
+                        const isSubActive = pathname === sub.href
+                        return (
+                          <Link key={sub.href} href={sub.href} onClick={() => setMobileOpen(false)}>
+                            <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                              isSubActive ? 'text-blue-400 font-medium' : 'text-slate-400 hover:text-white'
+                            }`}>
+                              <SubIcon className="w-4 h-4" />
+                              <span>{sub.label}</span>
+                            </div>
+                          </Link>
+                        )
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          }
+
           return (
             <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}>
               <motion.div
@@ -160,7 +228,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
           )
         })}
 
-        {/* Admin Link */}
         {isAdmin && (
           <Link href="/admin" onClick={() => setMobileOpen(false)}>
             <motion.div
@@ -191,7 +258,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
         )}
       </nav>
 
-      {/* Usuário e logout */}
       <div className="p-3 border-t border-slate-700/50 space-y-2">
         {!collapsed && userName && (
           <div className="px-3 py-2 bg-slate-700/30 rounded-xl">
@@ -226,7 +292,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile toggle button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition-colors"
@@ -234,7 +299,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
-      {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -247,7 +311,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
         )}
       </AnimatePresence>
 
-      {/* Mobile sidebar */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.aside
@@ -262,7 +325,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
         )}
       </AnimatePresence>
 
-      {/* Desktop sidebar */}
       <motion.aside
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1, width: collapsed ? 72 : 240 }}
@@ -271,7 +333,6 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
       >
         <SidebarContent />
 
-        {/* Botão colapsar */}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="absolute -right-3 top-20 w-6 h-6 bg-slate-700 border border-slate-600 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-600 transition-all duration-200 shadow-lg"
