@@ -75,7 +75,7 @@ export default function LoginPage() {
         <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
           {/* Personalização */}
           <motion.a
-            href="https://www.apezatomarketing.com"
+            href="https://www.apezatomarketing.com.br"
             target="_blank"
             rel="noopener noreferrer"
             whileHover={{ scale: 1.05 }}
@@ -214,13 +214,13 @@ export default function LoginPage() {
 
           {/* Footer */}
           <motion.a
-            href="https://www.apezatomarketing.com"
+            href="https://www.apezatomarketing.com.br"
             target="_blank"
             rel="noopener noreferrer"
             whileHover={{ scale: 1.02 }}
             className="text-center text-gray-500 text-xs mt-6 hover:text-ldm-orange transition-colors cursor-pointer inline-block w-full"
           >
-            © 2024 Apezato Marketing. Todos os direitos reservados.
+            © 2026 Apezato Marketing. Todos os direitos reservados.
           </motion.a>
         </div>
       </motion.div>
