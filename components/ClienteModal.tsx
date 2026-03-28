@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Save, User, Building2, Phone, Mail, DollarSign, FileText, Hash, ShieldCheck, Truck } from 'lucide-react'
+import { X, Save, User, Building2, Phone, Mail, DollarSign, FileText, Truck } from 'lucide-react'
 import { Cliente, StatusCliente } from '@/types'
 
 interface ClienteModalProps {

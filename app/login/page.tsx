@@ -74,6 +74,11 @@ export default function LoginPage() {
       >
         {/* Card principal */}
         <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-8">
+          {/* Personalização */}
+          <p className="text-center text-ldm-orange-light text-xs font-bold mb-2 uppercase tracking-wider">
+            Desenvolvido por Kauê Apezato - Loja Praia Grande
+          </p>
+
           {/* Logo */}
           <motion.div
             className="flex justify-center mb-8"
