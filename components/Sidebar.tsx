@@ -11,7 +11,6 @@ import {
   Kanban,
   BarChart3,
   LogOut,
-  Wrench,
   ChevronLeft,
   ChevronRight,
   User,
