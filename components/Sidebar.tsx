@@ -57,7 +57,7 @@ export default function Sidebar({ userName, userEmail }: SidebarProps) {
         .eq('id', session.user.id)
         .single()
       
-      if (profile?.role === 'admin') {
+      if (profile?.role === 'admin' || session.user.email === 'admin@ldm.com') {
         setIsAdmin(true)
       }
 

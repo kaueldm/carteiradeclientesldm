@@ -40,11 +40,22 @@ export default function ClientesPage() {
 
   async function fetchClientes(uid: string) {
     setLoading(true)
-    const { data } = await supabase
-      .from('clientes')
-      .select('*')
-      .eq('user_id', uid)
-      .order('created_at', { ascending: false })
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', uid)
+      .single()
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const isAdmin = (profile as { role?: string } | null)?.role === 'admin' || sessionData.session?.user.email === 'admin@ldm.com'
+
+    let query = supabase.from('clientes').select('*')
+    if (!isAdmin) {
+      query = query.eq('user_id', uid)
+    }
+    
+    const { data } = await query.order('created_at', { ascending: false })
     setClientes(data || [])
     setLoading(false)
   }

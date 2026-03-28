@@ -92,18 +92,20 @@ export default function DashboardPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('nome_completo')
+        .select('nome_completo, role')
         .eq('id', session.user.id)
         .single()
 
       setUserName(profile?.nome_completo || session.user.email?.split('@')[0] || 'Vendedor')
 
+      const isAdminUser = (profile as { role?: string } | null)?.role === 'admin' || session.user.email === 'admin@ldm.com'
+
       // Carregar clientes
-      const { data: clientesData } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
+      let query = supabase.from('clientes').select('*')
+      if (!isAdminUser) {
+        query = query.eq('user_id', session.user.id)
+      }
+      const { data: clientesData } = await query.order('created_at', { ascending: false })
 
       setClientes(clientesData || [])
 
@@ -116,7 +118,7 @@ export default function DashboardPage() {
         .select('*')
         .eq('user_id', session.user.id)
         .eq('mes_ano', mesAno)
-        .single()
+        .maybeSingle()
 
       setMeta(metaData)
       setLoading(false)
