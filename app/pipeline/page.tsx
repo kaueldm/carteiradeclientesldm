@@ -58,13 +58,28 @@ export default function PipelinePage() {
   }
 
   async function handleSaveCliente(data: Partial<Cliente>) {
-    await supabase.from('clientes').insert({ ...data, user_id: userId, status: novoStatus })
-    const { data: updated } = await supabase
-      .from('clientes')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    setClientes(updated || [])
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const currentUserId = session?.user.id || userId
+
+      if (!currentUserId) {
+        console.error('Usuário não autenticado')
+        return
+      }
+
+      const { error } = await supabase.from('clientes').insert({ ...data, user_id: currentUserId, status: novoStatus })
+      if (error) throw error
+
+      const { data: updated } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('user_id', currentUserId)
+        .order('created_at', { ascending: false })
+      setClientes(updated || [])
+    } catch (error) {
+      console.error('Erro ao salvar cliente no pipeline:', error)
+      alert('Erro ao salvar cliente. Verifique o console ou as permissões do banco.')
+    }
   }
 
   const getClientesByStatus = (status: StatusCliente) =>

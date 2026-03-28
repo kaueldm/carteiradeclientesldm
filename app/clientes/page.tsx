@@ -71,17 +71,32 @@ export default function ClientesPage() {
   }
 
   async function handleSaveCliente(data: Partial<Cliente>) {
-    if (clienteEdit) {
-      await supabase
-        .from('clientes')
-        .update({ ...data, updated_at: new Date().toISOString() })
-        .eq('id', clienteEdit.id)
-    } else {
-      await supabase
-        .from('clientes')
-        .insert({ ...data, user_id: userId })
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const currentUserId = session?.user.id || userId
+
+      if (!currentUserId) {
+        console.error('Usuário não autenticado')
+        return
+      }
+
+      if (clienteEdit) {
+        const { error } = await supabase
+          .from('clientes')
+          .update({ ...data, updated_at: new Date().toISOString() })
+          .eq('id', clienteEdit.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('clientes')
+          .insert({ ...data, user_id: currentUserId })
+        if (error) throw error
+      }
+      await fetchClientes(currentUserId)
+    } catch (error) {
+      console.error('Erro ao salvar cliente:', error)
+      alert('Erro ao salvar cliente. Verifique o console ou as permissões do banco.')
     }
-    await fetchClientes(userId)
   }
 
   async function handleDelete(id: string) {
