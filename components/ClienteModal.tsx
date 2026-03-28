@@ -27,6 +27,10 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
     numero_pedido: '',
     numero_orcamento: '',
     comprou_garantia: false,
+    garantia: false,
+    valor_garantia: '',
+    estado_atual: 'No WMS',
+    tipo: 'orcamento',
   })
   const [loading, setLoading] = useState(false)
 
@@ -44,6 +48,10 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
         numero_pedido: cliente.numero_pedido || '',
         numero_orcamento: cliente.numero_orcamento || '',
         comprou_garantia: cliente.comprou_garantia || false,
+        garantia: cliente.garantia || false,
+        valor_garantia: cliente.valor_garantia?.toString() || '',
+        estado_atual: cliente.estado_atual || 'No WMS',
+        tipo: cliente.tipo || 'orcamento',
       })
     } else {
       setForm({
@@ -58,6 +66,10 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
         numero_pedido: '',
         numero_orcamento: '',
         comprou_garantia: false,
+        garantia: false,
+        valor_garantia: '',
+        estado_atual: 'No WMS',
+        tipo: 'orcamento',
       })
     }
   }, [cliente, open])
@@ -68,6 +80,7 @@ export default function ClienteModal({ open, onClose, onSave, cliente }: Cliente
     await onSave({
       ...form,
       valor_potencial: form.valor_potencial ? parseFloat(form.valor_potencial) : undefined,
+      valor_garantia: form.valor_garantia ? parseFloat(form.valor_garantia) : undefined,
     })
     setLoading(false)
     onClose()
