@@ -323,7 +323,7 @@ export default function AdminPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
                   itemStyle={{ color: '#fff' }}
-                  formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR')}`, 'Vendas']}
+                  formatter={(value: string | number) => [`R$ ${Number(value).toLocaleString('pt-BR')}`, 'Vendas']}
                 />
                 <Bar dataKey="valorTotal" fill="#3b82f6" radius={[6, 6, 0, 0]} />
               </BarChart>
