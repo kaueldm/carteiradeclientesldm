@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { Cliente } from '@/types'
 import ClienteModal from '@/components/ClienteModal'
 import InteracaoModal from '@/components/InteracaoModal'
-import ImportarDadosModal from '@/components/ImportarDadosModal'
+import ImportarDadosModalV2 from '@/components/ImportarDadosModalV2'
 import { Interacao } from '@/types'
 import {
   Plus, Search, Edit2, Trash2,
@@ -336,10 +336,11 @@ export default function PedidosPage() {
         clienteId={interacaoModal.cliente?.id || ''}
       />
 
-      <ImportarDadosModal
+      <ImportarDadosModalV2
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        onSuccess={() => fetchClientes(userId)}
+        onImport={() => fetchClientes(userId)}
+        tipo="pedido"
       />
     </div>
   )

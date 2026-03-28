@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Cliente, StatusCliente, STATUS_COLORS } from '@/types'
 import ClienteModal from '@/components/ClienteModal'
 import InteracaoModal from '@/components/InteracaoModal'
-import ImportarDadosModal from '@/components/ImportarDadosModal'
+import ImportarDadosModalV2 from '@/components/ImportarDadosModalV2'
 import { Interacao } from '@/types'
 import {
   Plus, Search, Filter, Edit2, Trash2, MessageSquare,
@@ -411,10 +411,10 @@ export default function ClientesPage() {
         clienteNome={interacaoModal.cliente?.nome || ''}
       />
 
-      <ImportarDadosModal
+      <ImportarDadosModalV2
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        onSuccess={() => fetchClientes(userId)}
+        onImport={() => fetchClientes(userId)}
       />
     </div>
   )
