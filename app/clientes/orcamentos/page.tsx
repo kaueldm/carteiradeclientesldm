@@ -11,8 +11,9 @@ import ImportarDadosModalV2 from '@/components/ImportarDadosModalV2'
 import { Interacao } from '@/types'
 import {
   Plus, Search, Edit2, Trash2,
-  Phone, Building2, ArrowLeft, Trash
+  Phone, Building2, ArrowLeft, Trash, FileText
 } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 
 const STATUS_OPTIONS: StatusCliente[] = ['Novo', 'Em Contato', 'Proposta', 'Negociação', 'Fechado', 'Perdido']
 const STATUS_COLORS: Record<StatusCliente, string> = {
@@ -35,30 +36,20 @@ export default function OrcamentosPage() {
   const [clienteEdit, setClienteEdit] = useState<Cliente | null>(null)
   const [interacaoModal, setInteracaoModal] = useState<{ open: boolean; cliente: Cliente | null }>({ open: false, cliente: null })
   const [userId, setUserId] = useState('')
-  const [, setInteracoes] = useState<Record<string, Interacao[]>>({})
 
-  const fetchClientes = useCallback(async (uid: string) => {
+  const fetchClientes = useCallback(async () => {
     setLoading(true)
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', uid)
-      .single()
-
-    const { data: sessionData } = await supabase.auth.getSession()
-    const isAdmin = (profile as { role?: string } | null)?.role === 'admin' || sessionData.session?.user.email === 'admin@ldm.com'
-
-    let query = supabase.from('clientes').select('*')
-    if (!isAdmin) {
-      query = query.eq('user_id', uid)
-    }
-    
-    const { data } = await query
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('*')
       .eq('tipo', 'orcamento')
       .order('created_at', { ascending: false })
       
-    setClientes(data || [])
+    if (error) {
+      toast.error('Erro ao carregar orçamentos')
+    } else {
+      setClientes(data || [])
+    }
     setLoading(false)
   }, [])
 
@@ -70,79 +61,101 @@ export default function OrcamentosPage() {
         return
       }
       setUserId(session.user.id)
-      await fetchClientes(session.user.id)
+      await fetchClientes()
     }
     load()
   }, [router, fetchClientes])
 
-  async function fetchInteracoes(clienteId: string) {
-    const { data } = await supabase
-      .from('interacoes')
-      .select('*')
-      .eq('cliente_id', clienteId)
-      .order('created_at', { ascending: false })
-      .limit(10)
-    setInteracoes(prev => ({ ...prev, [clienteId]: data || [] }))
-  }
-
   async function handleSaveCliente(data: Partial<Cliente>) {
-    if (clienteEdit) {
-      await supabase
-        .from('clientes')
-        .update({ ...data, tipo: 'orcamento', updated_at: new Date().toISOString() })
-        .eq('id', clienteEdit.id)
-    } else {
-      await supabase
-        .from('clientes')
-        .insert({ ...data, user_id: userId, tipo: 'orcamento' })
+    const payload = { 
+      ...data, 
+      user_id: userId, 
+      tipo: 'orcamento',
+      updated_at: new Date().toISOString() 
     }
-    setClienteEdit(null)
-    setModalOpen(false)
-    await fetchClientes(userId)
+
+    let error
+    if (clienteEdit) {
+      const { error: updateError } = await supabase
+        .from('clientes')
+        .update(payload)
+        .eq('id', clienteEdit.id)
+      error = updateError
+    } else {
+      const { error: insertError } = await supabase
+        .from('clientes')
+        .insert([payload])
+      error = insertError
+    }
+
+    if (error) {
+      toast.error('Erro ao salvar orçamento')
+    } else {
+      toast.success('Orçamento salvo com sucesso')
+      setClienteEdit(null)
+      setModalOpen(false)
+      await fetchClientes()
+    }
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Tem certeza que deseja excluir este orçamento?')) return
-    await supabase.from('clientes').delete().eq('id', id)
-    setClientes(prev => prev.filter(c => c.id !== id))
+    const { error } = await supabase.from('clientes').delete().eq('id', id)
+    if (error) {
+      toast.error('Erro ao excluir orçamento')
+    } else {
+      toast.success('Orçamento excluído')
+      setClientes(prev => prev.filter(c => c.id !== id))
+    }
   }
 
   async function handleDeleteAll() {
-    if (!confirm('⚠️ Tem certeza que deseja excluir TODOS os orçamentos? Esta ação não pode ser desfeita!')) return
-    if (!confirm('Confirme novamente: deseja realmente excluir TODOS os orçamentos?')) return
-    
-    await supabase
+    if (!confirm('⚠️ Tem certeza que deseja excluir TODOS os orçamentos?')) return
+    const { error } = await supabase
       .from('clientes')
       .delete()
-      .eq('user_id', userId)
       .eq('tipo', 'orcamento')
     
-    await fetchClientes(userId)
+    if (error) {
+      toast.error('Erro ao excluir todos os orçamentos')
+    } else {
+      toast.success('Todos os orçamentos foram excluídos')
+      await fetchClientes()
+    }
   }
 
   async function handleUpdateStatus(id: string, status: StatusCliente) {
-    await supabase
+    const { error } = await supabase
       .from('clientes')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
-    setClientes(prev => prev.map(c => c.id === id ? { ...c, status } : c))
+    
+    if (error) {
+      toast.error('Erro ao atualizar status')
+    } else {
+      setClientes(prev => prev.map(c => c.id === id ? { ...c, status } : c))
+    }
   }
 
   async function handleSaveInteracao(data: Partial<Interacao>) {
-    await supabase.from('interacoes').insert({ ...data, user_id: userId })
-    if (data.cliente_id) {
-      await fetchInteracoes(data.cliente_id)
-      await supabase
-        .from('clientes')
-        .update({ ultima_interacao: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq('id', data.cliente_id)
+    const { error } = await supabase.from('interacoes').insert({ ...data, user_id: userId })
+    if (error) {
+      toast.error('Erro ao salvar interação')
+    } else {
+      toast.success('Interação registrada')
+      if (data.cliente_id) {
+        await supabase
+          .from('clientes')
+          .update({ ultima_interacao: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq('id', data.cliente_id)
+      }
     }
   }
 
   const clientesFiltrados = clientes.filter(c => {
     const matchBusca = c.nome.toLowerCase().includes(busca.toLowerCase()) ||
       c.email?.toLowerCase().includes(busca.toLowerCase()) ||
-      c.telefone?.includes(busca)
+      c.numero_orcamento?.includes(busca)
     const matchStatus = !filtroStatus || c.status === filtroStatus
     return matchBusca && matchStatus
   })
@@ -160,7 +173,6 @@ export default function OrcamentosPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
-      {/* Header */}
       <div className="bg-slate-900/50 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -171,7 +183,10 @@ export default function OrcamentosPage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-white">Orçamentos</h1>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <FileText className="w-6 h-6 text-blue-400" />
+                Orçamentos
+              </h1>
               <p className="text-sm text-slate-400">Gerencie seus orçamentos em aberto</p>
             </div>
           </div>
@@ -189,13 +204,12 @@ export default function OrcamentosPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Barra de Filtros */}
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-3.5 w-4 h-4 text-slate-500" />
             <input
               type="text"
-              placeholder="Buscar por nome, email ou telefone..."
+              placeholder="Buscar por nome, orçamento ou telefone..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
@@ -229,20 +243,9 @@ export default function OrcamentosPage() {
           </button>
         </div>
 
-        {/* Lista de Orçamentos */}
         {clientesFiltrados.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-slate-400 mb-4">Nenhum orçamento encontrado</p>
-            <button
-              onClick={() => {
-                setClienteEdit(null)
-                setModalOpen(true)
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              Criar Primeiro Orçamento
-            </button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -269,11 +272,6 @@ export default function OrcamentosPage() {
                           {cliente.telefone}
                         </div>
                       )}
-                      {cliente.email && (
-                        <div className="flex items-center gap-1">
-                          {cliente.email}
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -291,7 +289,6 @@ export default function OrcamentosPage() {
                     <button
                       onClick={() => setInteracaoModal({ open: true, cliente })}
                       className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-blue-400"
-                      title="Adicionar interação"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -338,7 +335,7 @@ export default function OrcamentosPage() {
       <ImportarDadosModalV2
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
-        onImport={() => fetchClientes(userId)}
+        onImport={fetchClientes}
         tipo="orcamento"
       />
     </div>
